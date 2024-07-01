@@ -10,6 +10,7 @@ import time
 import zipfile
 import patoolib
 import shutil
+import patool  # Change this import 
 from time import sleep
 from plugins.script import Translation
 from plugins.config import Config
