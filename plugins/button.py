@@ -24,7 +24,7 @@ from plugins.database.database import db
 from PIL import Image
 from plugins.functions.ran_text import random_char
 
-async def youtube_dl_call_back(bot:Client, update:CallbackQuery):
+async def youtube_dl_call_back(bot: Client, update: CallbackQuery):
     cb_data = update.data
     tg_send_type, youtube_dl_format, youtube_dl_ext, ranom = cb_data.split("|")
     random1 = random_char(5)
@@ -179,8 +179,8 @@ async def youtube_dl_call_back(bot:Client, update:CallbackQuery):
             )
             start_time = time.time()
 
-            # Upload as stream if file is large
-            if file_size > 2097152000:
+            # Upload as stream if file is large (updated to 1.5GB)
+            if file_size > 1610612736:
                 with open(download_directory, 'rb') as f:
                     await update.message.reply_document(
                         document=f,
@@ -194,7 +194,7 @@ async def youtube_dl_call_back(bot:Client, update:CallbackQuery):
                         )
                     )
             else:
-                # Normal Upload
+                # Normal upload for smaller files
                 if not await db.get_upload_as_doc(update.from_user.id):
                     thumbnail = await Gthumb01(bot, update)
                     await update.message.reply_document(
