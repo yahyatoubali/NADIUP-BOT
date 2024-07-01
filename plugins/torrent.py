@@ -1,0 +1,104 @@
+#  @yahyatoubali
+
+import asyncio
+import libtorrent as lt
+import time
+import os
+import shutil
+
+from pyrogram import Client, filters, enums
+from pyrogram.types import Message
+
+from plugins.config import Config
+from plugins.script import Translation
+from plugins.functions.display_progress import progress_for_pyrogram, humanbytes
+
+@Client.on_message(filters.command("torrent") & filters.private)
+async def torrent_download(bot: Client, message: Message):
+    if message.reply_to_message:
+        if message.reply_to_message.document or message.reply_to_message.text:
+            try:
+                # Get torrent content
+                if message.reply_to_message.document:
+                    torrent_file_path = await bot.download_media(
+                        message=message.reply_to_message.document,
+                        file_name=Config.DOWNLOAD_LOCATION + "/"
+                    )
+                elif message.reply_to_message.text and message.reply_to_message.text.startswith("magnet:"):
+                    torrent_file_path = message.reply_to_message.text
+                else:
+                    await message.reply_text("Please reply to a torrent file or magnet link.")
+                    return
+
+                # Initialize libtorrent session
+                ses = lt.session()
+                ses.listen_on(6881, 6891)
+                params = {
+                    'save_path': Config.DOWNLOAD_LOCATION,
+                    'storage_mode': lt.storage_mode_t(2),
+                    'paused': False,
+                    'auto_managed': True,
+                    'duplicate_is_error': True
+                }
+                if torrent_file_path.startswith("magnet:"):
+                    params['url'] = torrent_file_path
+                else:
+                    params['ti'] = lt.torrent_info(torrent_file_path)
+
+                handle = ses.add_torrent(params)
+                logger.info(f"Torrent added: {handle.name()}")
+
+                # Start download and update progress
+                await message.reply_text(f"Downloading torrent: `{handle.name()}`")
+                start_time = time.time()
+                previous_update_time = time.time()
+                while (not handle.is_seed()):
+                    s = handle.status()
+
+                    # Limit progress updates to every 5 seconds
+                    if time.time() - previous_update_time >= 5:
+                        try:
+                            current_progress = s.progress * 100
+                            downloaded_bytes = s.total_done
+                            total_size = s.total_wanted
+                            download_speed = s.download_rate
+                            
+                            # Display progress with progress_for_pyrogram
+                            await progress_for_pyrogram(
+                                current_progress,
+                                100,  # We are showing percentage here
+                                f"Downloading: `{handle.name()}`",
+                                message,
+                                start_time
+                            )
+
+                            previous_update_time = time.time()
+
+                        except Exception as e:
+                            logger.error(f"Error updating progress: {e}")
+
+                    await asyncio.sleep(1)
+
+                end_time = time.time()
+                total_time_taken = end_time - start_time
+
+                # Send files after download completion
+                await message.reply_text(f"Torrent downloaded successfully! Time taken: {TimeFormatter(total_time_taken * 1000)}")
+                for file in handle.get_torrent_info().files():
+                    file_path = os.path.join(Config.DOWNLOAD_LOCATION, file.path)
+                    await bot.send_document(
+                        message.chat.id, 
+                        document=file_path,
+                        caption=f"File: `{file.path}`",
+                        disable_notification=True
+                    )
+
+                # Clean up torrent files (optional, adjust as needed)
+                os.remove(torrent_file_path)
+                shutil.rmtree(os.path.join(Config.DOWNLOAD_LOCATION, handle.name()))
+
+            except Exception as e:
+                await message.reply_text(f"Error downloading torrent: {e}")
+                logger.error(f"Error in torrent_download: {e}")
+    else:
+        await message.reply_text("Please reply to a torrent file or magnet link.")
