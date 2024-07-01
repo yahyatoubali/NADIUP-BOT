@@ -7,10 +7,11 @@ class Translation(object):
 
 I am NadiuP Bot, a Telegram URL Uploader Bot.
 
-**Send me a direct link, and I will upload it to Telegram as a file/video**
+**Send me a direct link, and I will upload it to Telegram as a file/video.**
 
 Use the help button to know how to use me.
 """
+
     HELP_TEXT = """
 **Link to Media or File:**
 
@@ -31,7 +32,16 @@ Use the help button to know how to use me.
 **Show Thumbnail:**
 
 - Send `/showthumb` to view your custom thumbnail.
+
+**Extract Audio:**
+
+- Reply to a video with `/extractaudio` to extract the audio.
+
+**Unzip Archives:**
+
+- Reply to a supported archive file (zip, rar) with `/unzip` to extract its contents.
 """
+
     ABOUT_TEXT = """
 **My Name:** [NadiuP Bot](https://t.me/nadiupbot)
 
@@ -90,6 +100,12 @@ Use the help button to know how to use me.
         InlineKeyboardButton('⛔️ Close', callback_data='close')
         ]]
     )
+    EXTRACT_ZIP_INTRO_ONE = "Send a compressed file first, then reply to the file with `/unzip`."
+    EXTRACT_ZIP_INTRO_THREE = "Analyzing received file. ⚠️ This might take some time. Please be patient."
+    UNZIP_SUPPORTED_EXTENSIONS = ("zip", "rar")
+    EXTRACT_ZIP_ERRS_OCCURED = "Sorry. Errors occurred while processing the compressed file. Please check everything again, and if the issue persists, report this to <a href='https://t.me/yahyatoubali'>@yahyatoubali</a>"
+    CANCEL_STR = "Process Cancelled"
+    ZIP_UPLOADED_STR = "Uploaded {} files in {} seconds"
     TEXT = "Send me any custom thumbnail to set it."
     IFLONG_FILE_NAME = "Only 64 characters can be named."
     RENAME_403_ERR = "Sorry. You are not permitted to rename this file."
