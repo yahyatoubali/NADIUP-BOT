@@ -1,5 +1,13 @@
 #  @yahyatoubali
+import subprocess
+import sys
 
+# Install patool if not present
+try:
+    import patool
+except ImportError:
+    subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'patool'])
+    import patool
 import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -10,7 +18,6 @@ import json
 import math
 import os
 import shutil
-import patool
 import time
 from datetime import datetime
 
