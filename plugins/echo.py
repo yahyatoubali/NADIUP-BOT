@@ -17,6 +17,7 @@ import json
 import math
 from PIL import Image
 from plugins.config import Config
+from pyrogram import filters
 from plugins.script import Translation
 logging.getLogger("pyrogram").setLevel(logging.WARNING)
 from pyrogram import Client, enums
