@@ -17,11 +17,11 @@ apt-get install -y python3 python3-pip python3-venv git unrar
 # apt-get install -y mongodb-server
 
 # Create a project directory
-mkdir -p nadiup-bot
-cd nadiup-bot
+# mkdir -p nadiup-bot
+# cd nadiup-bot
 
 # Clone the bot repository
-git clone YOUR_BOT_REPOSITORY_URL .
+# git clone YOUR_BOT_REPOSITORY_URL .
 
 # Create a virtual environment
 python3 -m venv .venv
