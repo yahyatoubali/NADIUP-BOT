@@ -1,5 +1,5 @@
+#  @yahyatoubali
 
-# the logging things
 import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -12,7 +12,8 @@ import os
 import shutil
 import time
 from datetime import datetime
-from pyrogram import enums 
+
+from pyrogram import Client, enums
 from plugins.config import Config
 from plugins.script import Translation
 from plugins.thumbnail import *
@@ -23,7 +24,7 @@ from plugins.database.database import db
 from PIL import Image
 from plugins.functions.ran_text import random_char
 
-async def youtube_dl_call_back(bot, update):
+async def youtube_dl_call_back(bot:Client, update:CallbackQuery):
     cb_data = update.data
     tg_send_type, youtube_dl_format, youtube_dl_ext, ranom = cb_data.split("|")
     random1 = random_char(5)
@@ -171,42 +172,60 @@ async def youtube_dl_call_back(bot, update):
             await update.message.edit_caption(
                 caption=Translation.RCHD_TG_API_LIMIT.format(time_taken_for_download, humanbytes(file_size))
             )
+            return False
         else:
             await update.message.edit_caption(
                 caption=Translation.UPLOAD_START.format(custom_file_name)
             )
             start_time = time.time()
-            if not await db.get_upload_as_doc(update.from_user.id):
-                thumbnail = await Gthumb01(bot, update)
-                await update.message.reply_document(
-                    document=download_directory,
-                    thumb=thumbnail,
-                    caption=description,
-                    progress=progress_for_pyrogram,
-                    progress_args=(
-                        Translation.UPLOAD_START,
-                        update.message,
-                        start_time
+
+            # Upload as stream if file is large
+            if file_size > 2097152000:
+                with open(download_directory, 'rb') as f:
+                    await update.message.reply_document(
+                        document=f,
+                        caption=description,
+                        parse_mode=enums.ParseMode.HTML,
+                        progress=progress_for_pyrogram,
+                        progress_args=(
+                            Translation.UPLOAD_START,
+                            update.message,
+                            start_time
+                        )
                     )
-                )
             else:
-                width, height, duration = await Mdata01(download_directory)
-                thumb_image_path = await Gthumb02(bot, update, duration, download_directory)
-                await update.message.reply_video(
-                    video=download_directory,
-                    caption=description,
-                    duration=duration,
-                    width=width,
-                    height=height,
-                    supports_streaming=True,
-                    thumb=thumb_image_path,
-                    progress=progress_for_pyrogram,
-                    progress_args=(
-                        Translation.UPLOAD_START,
-                        update.message,
-                        start_time
+                # Normal Upload
+                if not await db.get_upload_as_doc(update.from_user.id):
+                    thumbnail = await Gthumb01(bot, update)
+                    await update.message.reply_document(
+                        document=download_directory,
+                        thumb=thumbnail,
+                        caption=description,
+                        progress=progress_for_pyrogram,
+                        progress_args=(
+                            Translation.UPLOAD_START,
+                            update.message,
+                            start_time
+                        )
                     )
-                )
+                else:
+                    width, height, duration = await Mdata01(download_directory)
+                    thumb_image_path = await Gthumb02(bot, update, duration, download_directory)
+                    await update.message.reply_video(
+                        video=download_directory,
+                        caption=description,
+                        duration=duration,
+                        width=width,
+                        height=height,
+                        supports_streaming=True,
+                        thumb=thumb_image_path,
+                        progress=progress_for_pyrogram,
+                        progress_args=(
+                            Translation.UPLOAD_START,
+                            update.message,
+                            start_time
+                        )
+                    )
             
             if tg_send_type == "audio":
                 duration = await Mdata03(download_directory)
@@ -253,16 +272,11 @@ async def youtube_dl_call_back(bot, update):
                 caption=Translation.AFTER_SUCCESSFUL_UPLOAD_MSG_WITH_TS.format(time_taken_for_download, time_taken_for_upload)
             )
             
-            logger.info(f"✅ Downloaded in: {time_taken_for_download} seconds")
-            logger.info(f"✅ Uploaded in: {time_taken_for_upload} seconds")
+            logger.info(f"Downloaded in: {time_taken_for_download} seconds")
+            logger.info(f"Uploaded in: {time_taken_for_upload} seconds")
 
-
-
-# Main handler to dispatch callbacks based on the update data
-async def button(bot, update):
-    if "|" in update.data:
-        await youtube_dl_call_back(bot, update)
-    elif "=" in update.data:
-        await ddl_call_back(bot, update)
     else:
-        await update.message.delete()
+        await update.message.edit_caption(
+            caption=Translation.NO_VOID_FORMAT_FOUND.format("Incorrect Link"),
+            parse_mode=enums.ParseMode.HTML
+        )
