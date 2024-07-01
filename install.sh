@@ -16,9 +16,6 @@ apt-get install -y python3 python3-pip python3-venv git unrar
 # You might need to adjust this based on your MongoDB setup
 # apt-get install -y mongodb-server
 
-# Install python-dotenv
-pip3 install python-dotenv 
-
 # Create a project directory
 mkdir -p nadiup-bot
 cd nadiup-bot
@@ -35,16 +32,29 @@ source .venv/bin/activate
 # Install Python dependencies
 pip install -r requirements.txt
 
-# Set environment variables (replace placeholders)
-echo "API_ID=YOUR_API_ID" > .env
-echo "API_HASH=YOUR_API_HASH" >> .env
-echo "BOT_TOKEN=YOUR_BOT_TOKEN" >> .env
-echo "DATABASE_URL=YOUR_MONGODB_URL" >> .env # If you're using MongoDB
-echo "DOWNLOAD_LOCATION=/path/to/your/download/folder" >> .env
+# Prompt for environment variables
+read -p "Enter your API_ID: " API_ID
+read -p "Enter your API_HASH: " API_HASH
+read -p "Enter your BOT_TOKEN: " BOT_TOKEN
+read -p "Enter your MongoDB URL (if applicable): " DATABASE_URL
+read -p "Enter the path for the download folder: " DOWNLOAD_LOCATION
+
+# Create the .env file with input values
+echo "API_ID=$API_ID" > .env
+echo "API_HASH=$API_HASH" >> .env
+echo "BOT_TOKEN=$BOT_TOKEN" >> .env
+echo "DATABASE_URL=$DATABASE_URL" >> .env # If you're using MongoDB
+echo "DOWNLOAD_LOCATION=$DOWNLOAD_LOCATION" >> .env
+
+# Set permissions for the download folder
+sudo chmod -R 777 "$DOWNLOAD_LOCATION"  # Set read, write, and execute permissions for the folder and its contents
 
 # Install additional system dependencies (if required)
 # Example:
 # apt-get install -y libgdiplus
+
+# Run setup.py to install bot-specific packages
+python3 setup.py
 
 echo "Installation complete. Start the bot with:"
 echo "python3 bot.py"
