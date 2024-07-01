@@ -40,8 +40,15 @@ Use the help button to know how to use me.
 **Unzip Archives:**
 
 - Reply to a supported archive file (zip, rar) with `/unzip` to extract its contents.
-"""
 
+**Download Torrents:**
+
+- Reply to a torrent file or magnet link with `/torrent` to start the download.
+
+**Generate Direct Links:**
+
+- Reply to a document with `/directlink` to generate a direct download link using file.io.
+"""
     ABOUT_TEXT = """
 **My Name:** [NadiuP Bot](https://t.me/nadiupbot)
 
