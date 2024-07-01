@@ -21,3 +21,5 @@ aiofiles
 pyromod
 flask
 gunicorn==20.1.0
+libtorrent
+aiofiles
