@@ -1,8 +1,9 @@
+You got it! Here's the code you can use to update the `README.md` file in your GitHub repository, using the structure we've defined:
+
+```markdown
 # NadiuP Bot - Telegram URL Uploader
 
 **A powerful Telegram bot for downloading and uploading files from URLs.**
-
-[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy) 
 
 ## Features
 
@@ -18,27 +19,88 @@
 
 ## Getting Started
 
-### 1. Deploy to Heroku
+### 1. Server Requirements
 
-[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy) 
+* **Operating System:**  Linux (Ubuntu, Debian, CentOS, etc.) is recommended.
+* **Python:** Python 3.9 or higher.
+* **Pip:**  Python's package installer (`pip`).
+* **MongoDB (Optional):**  If you're using a MongoDB database for your bot. 
+* **Storage:** At least 10GB of free disk space is recommended for storing downloaded files.
 
-Click the button above to deploy NadiuP Bot to Heroku. 
+### 2. Install Dependencies
 
-### 2. Configure Environment Variables
+1. **Create a virtual environment:**
 
-After deploying to Heroku, you'll need to set the following environment variables:
+   ```bash
+   python3 -m venv .venv
+   ```
 
-* `BOT_TOKEN`: Your bot token from BotFather.
-* `API_ID`: Your Telegram API ID.
-* `API_HASH`: Your Telegram API hash.
-* `DATABASE_URL`: Your MongoDB database URL.
-* `LOG_CHANNEL`: Your Telegram channel ID for logging (optional).
-* `UPDATES_CHANNEL`: Your Telegram channel ID for force subscribe (optional).
-* `OWNER_ID`: Your Telegram user ID.
+2. **Activate the virtual environment:**
 
-### 3. Start the Bot
+   ```bash
+   source .venv/bin/activate
+   ```
 
-Once you have configured the environment variables, start the bot on Heroku. It will be ready to use!
+3. **Install packages:**
+
+   ```bash
+   pip install -r requirements.txt 
+   ```
+
+### 3. Configure Environment Variables
+
+1. **Set Environment Variables:** 
+   * Create a `.env` file in the root directory of your project.
+   * Add the following lines (replacing with your actual values):
+
+   ```
+   API_ID=YOUR_API_ID
+   API_HASH=YOUR_API_HASH
+   BOT_TOKEN=YOUR_BOT_TOKEN
+   DATABASE_URL=YOUR_MONGODB_URL # (if you are using MongoDB)
+   ```
+
+2. **Load Environment Variables:**
+   - Update your `config.py` file to load environment variables:
+
+     ```python
+     import os
+     from dotenv import load_dotenv 
+     load_dotenv() # Load the environment variables from the .env file
+     
+     API_ID = os.getenv("API_ID")
+     API_HASH = os.getenv("API_HASH")
+     BOT_TOKEN = os.getenv("BOT_TOKEN")
+     DATABASE_URL = os.getenv("DATABASE_URL")  # (if you are using MongoDB)
+     # ... add other config variables as needed
+     ```
+     
+   - Install the `dotenv` package:
+   
+     ```bash
+     pip install python-dotenv
+     ```
+
+### 4. Run the Bot
+
+1. **Run `setup.py` to install dependencies and start the bot:**
+
+   ```bash
+   python3 setup.py
+   ```
+
+2. **Manually start the bot:**
+
+   ```bash
+   python3 bot.py
+   ```
+
+**Additional Notes:**
+
+* **MongoDB:**  If you are using MongoDB, make sure you have a MongoDB instance running and that the bot has access to it. You can use a cloud-based MongoDB service or install it on your server.
+* **Storage:** Your bot will need sufficient disk space to store downloaded files. 
+* **Firewall:** Configure your server's firewall to allow incoming connections from Telegram.
+* **Security:**  Set up proper security measures for your server.
 
 ## Usage
 
@@ -71,3 +133,16 @@ Contributions are welcome! If you'd like to add new features or improve the bot,
 ## License
 
 [MIT License](LICENSE)
+```
+
+**How to Use This Code:**
+
+1.  **Go to your GitHub Repository:** Open the README.md file in your repository.
+2.  **Replace the Contents:** Replace the existing content of your README.md file with this new code.
+3.  **Commit and Push:** Commit the changes to your README.md and push them to your GitHub repository.
+
+This updated README will make your project more user-friendly and easier to understand for anyone who wants to install and run your bot on their own server. Let me know if you have any other questions! 
+
+
+
+
