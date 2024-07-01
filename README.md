@@ -1,4 +1,3 @@
-You're right, that README was a bit outdated! Here's a fresh, more complete, and better-structured version:
 
 ```markdown
 # NadiuP Bot - Telegram URL Uploader
