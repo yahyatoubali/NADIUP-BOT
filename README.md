@@ -124,7 +124,7 @@ You got it! Here's the code you can use to update the `README.md` file in your G
 
 ## Support
 
-If you encounter any issues or need help, please contact the developer at [@yahyatoubali](https://t.me/yahyatoubali) or join the [NT Bots Support](https://t.me/NT_BOTS_SUPPORT) group.
+If you encounter any issues or need help, please contact the developer at [@yahyatoubali](https://t.me/yahyatoubali).
 
 ## Contributing
 
