@@ -50,11 +50,11 @@ async def unzip_files(bot:Client, message: Message):
                     os.remove(download_location)
                     return
 
-                elif patoolib.util.get_archive_format(download_location):
-                    # Extract the archive using patoolib
+                elif patool.util.get_archive_format(download_location):  # Use patool here
+                    # Extract the archive using patool
                     extract_location = os.path.splitext(download_location)[0]
                     try:
-                        patoolib.extract_archive(download_location, outdir=extract_location)
+                        patool.extract_archive(download_location, outdir=extract_location) # Use patool here
                     except Exception as e:
                         return await message.edit_text(f"**Error extracting archive:** {e}")
 
