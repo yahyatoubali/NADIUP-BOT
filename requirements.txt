@@ -20,8 +20,7 @@ tldextract
 aiofiles
 pyromod
 flask
-gunicorn==20.1.0
-libtorrent==2.0.9
+libtorrent==2.0.7
 aiofiles
 unrar
 patool
