@@ -1,5 +1,4 @@
-# @Shrimadhav Uk | @LISA_FAN_LK
-
+# @Shrimadhav Uk | @yahyatoubali
 
 import logging
 logging.basicConfig(level=logging.DEBUG,
@@ -22,11 +21,9 @@ from plugins.functions.display_progress import progress_for_pyrogram, humanbytes
 from hachoir.metadata import extractMetadata
 from hachoir.parser import createParser
 from PIL import Image
-from pyrogram import enums 
+from pyrogram import Client, enums 
 
-
-
-async def ddl_call_back(bot, update):
+async def ddl_call_back(bot: Client, update: CallbackQuery):
     logger.info(update)
     cb_data = update.data
     # youtube_dl extractors
@@ -63,6 +60,7 @@ async def ddl_call_back(bot, update):
                 o = entity.offset
                 l = entity.length
                 youtube_dl_url = youtube_dl_url[o:o + l]
+
     description = Translation.CUSTOM_CAPTION_UL_FILE
     start = datetime.now()
     await update.message.edit_caption(
@@ -108,61 +106,71 @@ async def ddl_call_back(bot, update):
             file_size = os.stat(download_directory).st_size
         if file_size > Config.TG_MAX_FILE_SIZE:
             await update.message.edit_caption(
-                
-                caption=Translation.RCHD_TG_API_LIMIT,
+                caption=Translation.RCHD_TG_API_LIMIT.format(time_taken_for_download, humanbytes(file_size)),
                 parse_mode=enums.ParseMode.HTML
             )
+            return False
         else:
-            
-            start_time = time.time()
-            if (await db.get_upload_as_doc(update.from_user.id)) is False:
-                thumbnail = await Gthumb01(bot, update)
-                await update.message.reply_document(
-                    #chat_id=update.message.chat.id,
-                    document=download_directory,
-                    thumb=thumbnail,
-                    caption=description,
-                    parse_mode=enums.ParseMode.HTML,
-                    #reply_to_message_id=update.id,
-                    progress=progress_for_pyrogram,
-                    progress_args=(
-                        Translation.UPLOAD_START,
-                        update.message,
-                        start_time
+            # Upload as stream if file is large
+            if file_size > 2097152000: 
+                start_time = time.time()
+                with open(download_directory, 'rb') as f:
+                    await update.message.reply_document(
+                        document=f,
+                        caption=description,
+                        parse_mode=enums.ParseMode.HTML,
+                        progress=progress_for_pyrogram,
+                        progress_args=(
+                            Translation.UPLOAD_START,
+                            update.message,
+                            start_time
+                        )
                     )
-                )
             else:
-                 width, height, duration = await Mdata01(download_directory)
-                 thumb_image_path = await Gthumb02(bot, update, duration, download_directory)
-                 await update.message.reply_video(
-                    #chat_id=update.message.chat.id,
-                    video=download_directory,
-                    caption=description,
-                    duration=duration,
-                    width=width,
-                    height=height,
-                    supports_streaming=True,
-                    parse_mode=enums.ParseMode.HTML,
-                    thumb=thumb_image_path,
-                    #reply_to_message_id=update.id,
-                    progress=progress_for_pyrogram,
-                    progress_args=(
-                        Translation.UPLOAD_START,
-                        update.message,
-                        start_time
+                # Normal upload 
+                start_time = time.time()
+                if (await db.get_upload_as_doc(update.from_user.id)) is False:
+                    thumbnail = await Gthumb01(bot, update)
+                    await update.message.reply_document(
+                        document=download_directory,
+                        thumb=thumbnail,
+                        caption=description,
+                        parse_mode=enums.ParseMode.HTML,
+                        progress=progress_for_pyrogram,
+                        progress_args=(
+                            Translation.UPLOAD_START,
+                            update.message,
+                            start_time
+                        )
                     )
-                )
+                else:
+                    width, height, duration = await Mdata01(download_directory)
+                    thumb_image_path = await Gthumb02(bot, update, duration, download_directory)
+                    await update.message.reply_video(
+                        video=download_directory,
+                        caption=description,
+                        duration=duration,
+                        width=width,
+                        height=height,
+                        supports_streaming=True,
+                        parse_mode=enums.ParseMode.HTML,
+                        thumb=thumb_image_path,
+                        progress=progress_for_pyrogram,
+                        progress_args=(
+                            Translation.UPLOAD_START,
+                            update.message,
+                            start_time
+                        )
+                    )
             if tg_send_type == "audio":
                 duration = await Mdata03(download_directory)
                 thumbnail = await Gthumb01(bot, update)
                 await update.message.reply_audio(
-                    #chat_id=update.message.chat.id,
                     audio=download_directory,
                     caption=description,
                     parse_mode=enums.ParseMode.HTML,
                     duration=duration,
                     thumb=thumbnail,
-                    #reply_to_message_id=update.id,
                     progress=progress_for_pyrogram,
                     progress_args=(
                         Translation.UPLOAD_START,
@@ -174,12 +182,10 @@ async def ddl_call_back(bot, update):
                 width, duration = await Mdata02(download_directory)
                 thumbnail = await Gthumb02(bot, update, duration, download_directory)
                 await update.message.reply_video_note(
-                    #chat_id=update.message.chat.id,
                     video_note=download_directory,
                     duration=duration,
                     length=width,
                     thumb=thumbnail,
-                    #reply_to_message_id=update.id,
                     progress=progress_for_pyrogram,
                     progress_args=(
                         Translation.UPLOAD_START,
@@ -199,14 +205,13 @@ async def ddl_call_back(bot, update):
             time_taken_for_upload = (end_two - end_one).seconds
             await update.message.edit_caption(
                 caption=Translation.AFTER_SUCCESSFUL_UPLOAD_MSG_WITH_TS.format(time_taken_for_download, time_taken_for_upload),
-               
                 parse_mode=enums.ParseMode.HTML
             )
+            logger.info(f"Downloaded in: {time_taken_for_download} seconds")
+            logger.info(f"Uploaded in: {time_taken_for_upload} seconds")
     else:
         await update.message.edit_caption(
             caption=Translation.NO_VOID_FORMAT_FOUND.format("Incorrect Link"),
-            
-            
             parse_mode=enums.ParseMode.HTML
         )
 
@@ -218,14 +223,15 @@ async def download_coroutine(bot, session, url, file_name, chat_id, message_id, 
         content_type = response.headers["Content-Type"]
         if "text" in content_type and total_length < 500:
             return await response.release()
-        await bot.edit_message_text(
+        await bot.edit_message_caption(
             chat_id,
             message_id,
-            text="""Initiating Download
-            
-**🔗 Uʀʟ :** `{}`
+            caption="""**Initiating Download**
 
-**🗂️ Sɪᴢᴇ :** {}""".format(url, humanbytes(total_length))
+**🔗 URL:** `{}`
+
+**🗂️ Size:** {}""".format(url, humanbytes(total_length)),
+            parse_mode=enums.ParseMode.MARKDOWN
         )
         with open(file_name, "wb") as f_handle:
             while True:
@@ -245,26 +251,28 @@ async def download_coroutine(bot, session, url, file_name, chat_id, message_id, 
                     estimated_total_time = elapsed_time + time_to_completion
                     try:
                         current_message = """**Download Status**
-**🔗 Uʀʟ :** `{}`
 
-**🗂️ Sɪᴢᴇ :** {}
+**🔗 URL:** `{}`
 
-**✅ Dᴏɴᴇ :** {}
+**🗂️ Size:** {}
 
-**⏱️ Eᴛᴀ :** {}""".format(
-    url,
-    humanbytes(total_length),
-    humanbytes(downloaded),
-    TimeFormatter(estimated_total_time)
-)
+**✅ Done:** {}
+
+**⏱️ ETA:** {}""".format(
+                            url,
+                            humanbytes(total_length),
+                            humanbytes(downloaded),
+                            TimeFormatter(estimated_total_time)
+                        )
                         if current_message != display_message:
-                            await bot.edit_message_text(
+                            await bot.edit_message_caption(
                                 chat_id,
                                 message_id,
-                                text=current_message
+                                caption=current_message,
+                                parse_mode=enums.ParseMode.MARKDOWN
                             )
                             display_message = current_message
                     except Exception as e:
-                        logger.info(str(e))
+                        logger.error(f"Error updating download progress: {e}")
                         pass
         return await response.release()
