@@ -58,4 +58,4 @@ async def extract_audio(bot: Client, message: Message):
         os.remove(download_location)
         os.remove(output_file)
     else:
-        await message.reply_text("Please reply to a video to extract
+        await message.reply_text("Please reply to a video to extract audio.") # Add closing "
