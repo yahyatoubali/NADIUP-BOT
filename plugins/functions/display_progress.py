@@ -1,4 +1,3 @@
-
 import time
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from plugins.script import Translation
@@ -8,44 +7,43 @@ import math
 async def progress_for_pyrogram(current, total, ud_type, message, start, bar_width=20, status=""):
     now = time.time()
     diff = now - start
-    percentage = current * 100 / total
-    speed = current / diff
-    elapsed_time = round(diff) * 1000
-    time_to_completion = round((total - current) / speed) * 1000
-    estimated_total_time = elapsed_time + time_to_completion
+    if round(diff % 10.00) == 0 or current == total:
+        # if round(current / total * 100, 0) % 5 == 0:
+        percentage = current * 100 / total
+        speed = current / diff
+        elapsed_time = round(diff) * 1000
+        time_to_completion = round((total - current) / speed) * 1000
+        estimated_total_time = elapsed_time + time_to_completion
 
-    elapsed_time = TimeFormatter(milliseconds=elapsed_time)
-    estimated_total_time = TimeFormatter(milliseconds=estimated_total_time)
+        elapsed_time = TimeFormatter(milliseconds=elapsed_time)
+        estimated_total_time = TimeFormatter(milliseconds=estimated_total_time)
 
-    progress = "[{0}{1}] \n".format(
-        ''.join(["█" for _ in range(math.floor(percentage / (100 / bar_width)))]),
-        ''.join(["░" for _ in range(bar_width - math.floor(percentage / (100 / bar_width)))])
-    )
-
-    tmp = progress + Translation.PROGRESS.format(
-        round(percentage, 2),
-        humanbytes(current),
-        humanbytes(total),
-        humanbytes(speed),
-        estimated_total_time if estimated_total_time != '' else "0 s"
-    )
-
-    status_message = f"**{ud_type}**\n\n{status}\n\n{tmp}"
-
-    try:
-        await message.edit(
-            text=status_message,
-            parse_mode=enums.ParseMode.MARKDOWN,
-            reply_markup=InlineKeyboardMarkup(
-                [
-                    [ 
-                        InlineKeyboardButton('⛔️ Cancel', callback_data='close')
-                    ]
-                ]
-            )
+        progress = "[{0}{1}] \n**Progress:** {2}%\n".format(
+            ''.join(["█" for i in range(math.floor(percentage / (100 / bar_width)))]),
+            ''.join(["░" for i in range(bar_width - math.floor(percentage / (100 / bar_width)))]),
+            round(percentage, 2)
         )
-    except Exception as e:
-        print(f"Error updating progress: {e}")
+
+        tmp = progress + Translation.PROGRESS.format(
+            round(percentage, 2),
+            humanbytes(current),
+            humanbytes(total),
+            humanbytes(speed),
+            estimated_total_time if estimated_total_time != '' else "0 s"
+        )
+        try:
+            await message.edit_text(
+                text="{}\n {}".format(ud_type, tmp),
+                parse_mode=enums.ParseMode.MARKDOWN,
+                reply_markup=InlineKeyboardMarkup(
+                    [[
+                        InlineKeyboardButton("✖️ Cancel", callback_data="close")
+                    ]]
+                )
+            )
+        except:
+            pass
+
 
 def humanbytes(size):
     if not size:
