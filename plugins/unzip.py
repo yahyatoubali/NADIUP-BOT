@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 import os
 import time
 import zipfile
-import unrar
+import patool  # Use patool for archive extraction
 import shutil
 from time import sleep
 from plugins.script import Translation
@@ -49,10 +49,12 @@ async def unzip_files(bot:Client, message: Message):
                     os.remove(download_location)
                     return
 
-                # Extract RAR archives using unrar
-                elif unrar.is_rarfile(download_location):
+                # Extract archives using patool
+                elif patool.util.get_archive_format(download_location):
+                    # Extract the archive
+                    extract_location = os.path.splitext(download_location)[0]
                     try:
-                        unrar.extract(download_location, os.path.dirname(download_location))
+                        patool.extract_archive(download_location, outdir=extract_location)
                     except Exception as e:
                         return await message.edit_text(f"**Error extracting archive:** {e}")
 
@@ -60,7 +62,6 @@ async def unzip_files(bot:Client, message: Message):
                     os.remove(download_location)
 
                     # Upload extracted files
-                    extract_location = os.path.splitext(download_location)[0]
                     for filename in os.listdir(extract_location):
                         filepath = os.path.join(extract_location, filename)
                         try:
