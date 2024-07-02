@@ -6,20 +6,41 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-# Update package lists
-apt-get update -y
+# Detect operating system
+OS=$(uname -s)
 
-# Install necessary packages
-apt-get install -y python3 python3-pip python3-venv git unrar 
-sudo apt-get update
-sudo apt-get install ffmpeg
+# Function to install packages for Ubuntu/Debian
+install_ubuntu() {
+  apt-get update -y
+  apt-get install -y python3 python3-pip python3-venv git unrar ffmpeg 
+}
 
-# Install additional system dependencies (if required)
-# Example:
-# apt-get install -y libgdiplus
+# Function to install packages for CentOS
+install_centos() {
+  yum update -y
+  yum install -y python3 python3-pip python3-venv git unrar ffmpeg 
+}
 
-# Clone the bot repository
-# git clone YOUR_BOT_REPOSITORY_URL .
+# Function to install packages for Arch Linux
+install_arch() {
+  pacman -Syu
+  pacman -S python python-pip python-virtualenv git unrar ffmpeg
+}
+
+# Install packages based on OS
+if [ "$OS" == "Linux" ]; then
+  if [ -f /etc/redhat-release ]; then
+    install_centos
+  elif [ -f /etc/debian_version ]; then
+    install_ubuntu
+  elif [ -f /etc/arch-release ]; then
+    install_arch
+  else
+    echo "Unsupported operating system."
+    exit 1
+  fi
+fi
+
 
 # Create a virtual environment
 python3 -m venv .venv
@@ -45,8 +66,7 @@ echo "DATABASE_URL=$DATABASE_URL" >> .env # If you're using MongoDB
 echo "DOWNLOAD_LOCATION=$DOWNLOAD_LOCATION" >> .env
 
 # Set permissions for the download folder
-sudo chmod -R 777 "$DOWNLOAD_LOCATION"  # Set read, write, and execute permissions for the folder and its contents
-
+sudo chmod -R 777 "$DOWNLOAD_LOCATION"  # Set permissions
 
 # Run setup.py to install bot-specific packages
 python3 setup.py
