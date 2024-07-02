@@ -1,5 +1,7 @@
 import os
+from dotenv import load_dotenv
 
+load_dotenv()
 import logging
 
 logging.basicConfig(
@@ -13,7 +15,7 @@ class Config(object):
     
     BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
     
-    API_ID = int(os.environ.get("API_ID", ""))
+    API_ID = os.environ.get("API_ID", "") # Remove the int() conversion 
     
     API_HASH = os.environ.get("API_HASH", "")
     
@@ -54,4 +56,3 @@ class Config(object):
     TG_MIN_FILE_SIZE = 2097152000
     
     BOT_USERNAME = os.environ.get("BOT_USERNAME", "")
-                                  
