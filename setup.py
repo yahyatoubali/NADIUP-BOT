@@ -9,7 +9,7 @@ def install(package):
 install_requirements = ["aiohttp", "beautifulsoup4", "hachoir", "numpy", "Pillow", "pyrogram", 
                        "requests", "tgcrypto", "yt-dlp", "olefile", "motor", "pymongo", "dnspython", 
                        "ffmpeg-python", "ffmpeg", "psutil", "loggers", "filetype", "tldextract",
-                       "aiofiles", "pyromod", "flask", "gunicorn==20.1.0", "libtorrent==2.0.9", "patool", "unrar"]
+                       "aiofiles", "pyromod", "flask", "gunicorn==20.1.0", "libtorrent==2.0.9", "unrar"]
 
 setup(
     name='nadiup-bot',
