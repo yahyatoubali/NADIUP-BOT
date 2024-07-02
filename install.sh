@@ -42,10 +42,6 @@ if [ "$OS" == "Linux" ]; then
 fi
 
 
-
-# Install Python dependencies
-pip install -r requirements.txt
-
 # Prompt for environment variables
 read -p "Enter your API_ID: " API_ID
 read -p "Enter your API_HASH: " API_HASH
