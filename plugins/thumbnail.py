@@ -120,7 +120,6 @@ async def Gthumb01(bot, update):
         thumbnail = None
 
     return thumbnail
-
 async def Gthumb02(bot, update, duration, download_directory):
     thumb_image_path = Config.DOWNLOAD_LOCATION + "/" + str(update.from_user.id) + ".jpg"
     db_thumbnail = await db.get_thumbnail(update.from_user.id)
@@ -129,6 +128,12 @@ async def Gthumb02(bot, update, duration, download_directory):
     else:
         thumbnail = await take_screen_shot(download_directory, os.path.dirname(download_directory), random.randint(0, duration - 1))
 
+    # If thumbnail is None, don't try to delete it
+    if thumbnail:
+        Image.open(thumbnail).convert("RGB").save(thumbnail)
+        img = Image.open(thumbnail)
+        img.resize((100, 100))
+        img.save(thumbnail, "JPEG")
     return thumbnail
 
 async def Mdata01(download_directory):
