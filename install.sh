@@ -14,6 +14,10 @@ apt-get install -y python3 python3-pip python3-venv git unrar
 sudo apt-get update
 sudo apt-get install ffmpeg
 
+# Install additional system dependencies (if required)
+# Example:
+# apt-get install -y libgdiplus
+
 # Clone the bot repository
 # git clone YOUR_BOT_REPOSITORY_URL .
 
@@ -43,9 +47,6 @@ echo "DOWNLOAD_LOCATION=$DOWNLOAD_LOCATION" >> .env
 # Set permissions for the download folder
 sudo chmod -R 777 "$DOWNLOAD_LOCATION"  # Set read, write, and execute permissions for the folder and its contents
 
-# Install additional system dependencies (if required)
-# Example:
-# apt-get install -y libgdiplus
 
 # Run setup.py to install bot-specific packages
 python3 setup.py
