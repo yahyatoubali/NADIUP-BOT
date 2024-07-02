@@ -11,14 +11,8 @@ apt-get update -y
 
 # Install necessary packages
 apt-get install -y python3 python3-pip python3-venv git unrar 
-
-# Install MongoDB (if needed)
-# You might need to adjust this based on your MongoDB setup
-# apt-get install -y mongodb-server
-
-# Create a project directory
-# mkdir -p nadiup-bot
-# cd nadiup-bot
+sudo apt-get update
+sudo apt-get install ffmpeg
 
 # Clone the bot repository
 # git clone YOUR_BOT_REPOSITORY_URL .
