@@ -42,11 +42,6 @@ if [ "$OS" == "Linux" ]; then
 fi
 
 
-# Create a virtual environment
-python3 -m venv .venv
-
-# Activate the virtual environment
-source .venv/bin/activate
 
 # Install Python dependencies
 pip install -r requirements.txt
