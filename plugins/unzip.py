@@ -16,6 +16,7 @@ from pyrogram import Client, filters, enums
 from pyrogram.types import (
     InlineKeyboardButton, 
     InlineKeyboardMarkup
+    Message
 )
 import subprocess
 
