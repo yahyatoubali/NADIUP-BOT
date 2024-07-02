@@ -1,5 +1,4 @@
 
-```markdown
 # NadiuP Bot - Telegram URL Uploader
 
 **A powerful Telegram bot for downloading and uploading files from URLs, managing torrents, and extracting archives.**
