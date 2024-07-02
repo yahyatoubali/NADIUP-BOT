@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 import os
 import time
 import zipfile
+import unrar
 import shutil
 from time import sleep
 from plugins.script import Translation
@@ -15,8 +16,8 @@ from plugins.config import Config
 from pyrogram import Client, filters, enums
 from pyrogram.types import (
     InlineKeyboardButton, 
-    InlineKeyboardMarkup
-    Message
+    InlineKeyboardMarkup,
+    Message # Import Message here
 )
 import subprocess
 
