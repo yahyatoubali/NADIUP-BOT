@@ -128,8 +128,8 @@ async def Gthumb02(bot, update, duration, download_directory):
     else:
         thumbnail = await take_screen_shot(download_directory, os.path.dirname(download_directory), random.randint(0, duration - 1))
 
-    # If thumbnail is None, don't try to delete it
-    if thumbnail:
+    # Process the thumbnail only if it exists
+    if thumbnail is not None: 
         Image.open(thumbnail).convert("RGB").save(thumbnail)
         img = Image.open(thumbnail)
         img.resize((100, 100))
