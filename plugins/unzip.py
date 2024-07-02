@@ -8,7 +8,6 @@ logger = logging.getLogger(__name__)
 import os
 import time
 import zipfile
-import patool  # Use patool for archive extraction
 import shutil
 from time import sleep
 from plugins.script import Translation
@@ -18,6 +17,7 @@ from pyrogram.types import (
     InlineKeyboardButton, 
     InlineKeyboardMarkup
 )
+import subprocess
 
 @Client.on_message(filters.command("unzip") & filters.private)
 async def unzip_files(bot:Client, message: Message):
@@ -40,50 +40,27 @@ async def unzip_files(bot:Client, message: Message):
                 if download_location is None:
                     return await message.edit_text(Translation.DOWNLOAD_FAILED)
 
-                # Check if the downloaded file is a zip archive
-                if zipfile.is_zipfile(download_location):
-                    # Extract the zip archive
-                    with zipfile.ZipFile(download_location, 'r') as zip_ref:
-                        zip_ref.extractall(os.path.dirname(download_location))
-                    await message.edit_text(f"**Successfully extracted all files!**")
-                    os.remove(download_location)
-                    return
+                # Call the Bash script for extraction
+                extract_dir = os.path.dirname(download_location)
+                subprocess.run(["bash", "extract_archive.sh", download_location, extract_dir])
 
-                # Extract archives using patool
-                elif patool.util.get_archive_format(download_location):
-                    # Extract the archive
-                    extract_location = os.path.splitext(download_location)[0]
+                # Upload extracted files
+                for filename in os.listdir(extract_dir):
+                    filepath = os.path.join(extract_dir, filename)
                     try:
-                        patool.extract_archive(download_location, outdir=extract_location)
+                        await bot.send_document(
+                            chat_id=message.chat.id,
+                            document=filepath,
+                            caption=f"Extracted: `{filename}`",
+                            disable_notification=True
+                        )
                     except Exception as e:
-                        return await message.edit_text(f"**Error extracting archive:** {e}")
+                        await message.reply_text(f"**Error uploading extracted file {filename}:** {e}")
 
-                    await message.edit_text(f"**Successfully extracted all files!**")
-                    os.remove(download_location)
-
-                    # Upload extracted files
-                    for filename in os.listdir(extract_location):
-                        filepath = os.path.join(extract_location, filename)
-                        try:
-                            await bot.send_document(
-                                chat_id=message.chat.id,
-                                document=filepath,
-                                caption=f"Extracted: `{filename}`",
-                                disable_notification=True
-                            )
-                        except Exception as e:
-                            await message.reply_text(f"**Error uploading extracted file {filename}:** {e}")
-
-                    # Clean up extracted files
-                    shutil.rmtree(extract_location)
-                    return
-
-                else:
-                    await message.edit_text(
-                        "**This file is not a supported archive format (zip, rar)!**"
-                    )
-                    os.remove(download_location)
-                    return
+                # Clean up extracted files
+                shutil.rmtree(extract_dir)
+                os.remove(download_location)
+                return
             else:
                 await message.edit_text("**Please reply to a document to unzip it.**")
         except Exception as e:
