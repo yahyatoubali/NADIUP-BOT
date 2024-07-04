@@ -137,20 +137,23 @@ async def Gthumb02(bot, update, duration, download_directory):
     return thumbnail
 
 async def Mdata01(download_directory):
+    width = 0
+    height = 0
+    duration = 0
+    metadata = extractMetadata(createParser(download_directory))
+    if metadata is not None:
+        if metadata.has("duration"):
+            duration = metadata.get('duration').seconds
+        if metadata.has("width"):
+            width = metadata.get("width")
+        if metadata.has("height"):
+            height = metadata.get("height")
 
-          width = 0
-          height = 0
-          duration = 0
-          metadata = extractMetadata(createParser(download_directory))
-          if metadata is not None:
-              if metadata.has("duration"):
-                  duration = metadata.get('duration').seconds
-              if metadata.has("width"):
-                  width = metadata.get("width")
-              if metadata.has("height"):
-                  height = metadata.get("height")
+    # Check if duration is still 0 and set to 1 if it is
+    if duration == 0:
+        duration = 1 # Set a default duration to avoid the error 
 
-          return width, height, duration
+    return width, height, duration
 
 async def Mdata02(download_directory):
 
