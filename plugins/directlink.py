@@ -30,7 +30,7 @@ async def generate_direct_link(bot: Client, message: Message):
     if message.reply_to_message:
         # ... (Existing logic for handling replied messages) ... 
 
-    elif message.document:
+    elif message.document: # This line should be indented!
         # Handle uploaded documents 
         file_name = message.document.file_name.lower()
         if file_name.endswith(".sh"):
