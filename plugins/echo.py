@@ -15,6 +15,9 @@ import tldextract
 import asyncio
 import json
 import math
+import certifi
+import os
+os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
 from PIL import Image
 from plugins.config import Config
 from pyrogram import filters
