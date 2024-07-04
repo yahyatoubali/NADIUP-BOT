@@ -4,6 +4,7 @@ import asyncio
 import os
 import requests
 import aiofiles
+import tempfile
 
 from pyrogram import Client, filters, enums
 from pyrogram.types import Message
