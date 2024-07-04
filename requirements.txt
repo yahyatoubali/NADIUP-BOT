@@ -25,3 +25,4 @@ libtorrent==2.0.9
 aiofiles
 unrar
 python-dotenv
+certifi
