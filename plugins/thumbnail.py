@@ -126,7 +126,7 @@ async def Gthumb02(bot, update, duration, download_directory):
     if db_thumbnail is not None:
         thumbnail = await bot.download_media(message=db_thumbnail, file_name=thumb_image_path)
     else:
-        thumbnail = await take_screen_shot(download_directory, os.path.dirname(download_directory), random.randint(0, duration - 1))
+      thumbnail = await take_screen_shot(download_directory, os.path.dirname(download_directory), random.randint(0, duration - 1))
 
     # Process the thumbnail only if it exists
     if thumbnail is not None: 
