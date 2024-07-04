@@ -20,9 +20,10 @@ import os
 
 os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
 
+# Import necessary functions from other modules
 from plugins.config import Config
 from plugins.script import Translation
-from plugins.torrent import torrent_download 
+from plugins.torrent import torrent_download  # For torrent handling
 from plugins.functions.forcesub import handle_force_subscribe
 from plugins.functions.display_progress import humanbytes
 from plugins.functions.help_uploadbot import DownLoadFile
@@ -35,9 +36,9 @@ from plugins.functions.ran_text import random_char
 from plugins.database.add import add_user_to_database
 from pyrogram.types import Thumbnail, Message
 
-from pyrogram import Client, filters, enums, types
+from pyrogram import Client, filters, enums, types  # Import filters, enums, and types 
 
-@Client.on_message(filters.private)
+@Client.on_message(filters.private) # Use filters.private for private chats
 async def handle_user_input(bot: Client, update: Message):
     """Handles different types of user input."""
 
@@ -45,6 +46,11 @@ async def handle_user_input(bot: Client, update: Message):
         return await update.reply_text("Sorry, I couldn't process your request. Please try again.")
 
     await add_user_to_database(bot, update)
+
+    # if Config.UPDATES_CHANNEL:  # Force subscribe will be handled in Phase 2
+    #   fsub = await handle_force_subscribe(bot, update)
+    #   if fsub == 400:
+    #       return
 
     # Handle different input types
     if update.text:
@@ -58,6 +64,25 @@ async def handle_user_input(bot: Client, update: Message):
             await process_direct_link(bot, update)
             return
 
+        # 3. Handle Bot Commands (if needed)
+        # elif update.text.startswith("/"):
+        #     # ... add your command handling logic here ...
+        #     # Example:
+        #     if update.text == "/start":
+        #         await start(bot, update)
+        #     elif update.text == "/help":
+        #         await help(bot, update) 
+        #     else:
+        #         await update.reply_text("Invalid command.") 
+
+    elif update.document:
+        # Handle file uploads (for torrent files)
+        if update.document.file_name.lower().endswith(".torrent"):
+            await torrent_download(bot, update)
+            return
+        else:
+            await update.reply_text("I don't understand this input type. Please provide a URL or a magnet link.")
+    
     else:
         await update.reply_text("I don't understand this input type. Please provide a URL or a magnet link.")
 
