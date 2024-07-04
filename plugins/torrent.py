@@ -21,11 +21,22 @@ logger = logging.getLogger(__name__)
 # Dictionary to store user's active torrents
 user_torrents = {}
 
-@Client.on_message((filters.command("torrent") | filters.regex(pattern="^magnet:.*")) & filters.private)
+@Client.on_message((filters.command("torrent") | filters.regex(pattern="^magnet:.*")) & filters.private) 
 async def torrent_download(bot: Client, message: Message):
     try:
-        # ... (Code for getting torrent file or magnet link)
+        # Get torrent content 
+        if message.document:
+            torrent_file_path = await bot.download_media(
+                message=message.document,
+                file_name=Config.DOWNLOAD_LOCATION + "/"
+            )
+        elif message.text and message.text.startswith("magnet:"):
+            torrent_file_path = message.text
+        else:
+            await message.reply_text("Please provide a torrent file or magnet link.")
+            return
 
+        # --- Updated Section to define torrent_file_path ---
         # Initialize libtorrent session and add torrent
         ses = lt.session({'listen_interfaces': '0.0.0.0:6881'})
         if torrent_file_path.startswith("magnet:"):
@@ -61,7 +72,6 @@ async def torrent_download(bot: Client, message: Message):
                     total_size = s.total_wanted
                     download_speed = s.download_rate
 
-                    # Display progress using progress_for_pyrogram
                     await progress_for_pyrogram(
                         current_progress,
                         100,  # Percentage
@@ -84,6 +94,7 @@ async def torrent_download(bot: Client, message: Message):
         await message.reply_text(
             f"Torrent downloaded successfully! Time taken: {TimeFormatter(total_time_taken * 1000)}"
         )
+        # Get files from the 'info' object
         info = handle.get_torrent_info()
         for i in range(info.num_files()):
             file_path = os.path.join(Config.DOWNLOAD_LOCATION, info.files().at(i).path)
