@@ -34,23 +34,19 @@ from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram.errors import UserNotParticipant
 from plugins.functions.ran_text import random_char
 from plugins.database.add import add_user_to_database
+from plugins.directlink import process_file  # Import process_file
 from pyrogram.types import Thumbnail, Message
 
-from pyrogram import Client, filters, enums, types  # Import filters, enums, and types 
+from pyrogram import Client, filters, enums, types
 
-@Client.on_message(filters.private) # Use filters.private for private chats
+@Client.on_message(filters.private)
 async def handle_user_input(bot: Client, update: Message):
-    """Handles different types of user input."""
+    """Handles different types of user input intelligently."""
 
     if not update.from_user:
         return await update.reply_text("Sorry, I couldn't process your request. Please try again.")
 
     await add_user_to_database(bot, update)
-
-    # if Config.UPDATES_CHANNEL:  # Force subscribe will be handled in Phase 2
-    #   fsub = await handle_force_subscribe(bot, update)
-    #   if fsub == 400:
-    #       return
 
     # Handle different input types
     if update.text:
@@ -64,27 +60,32 @@ async def handle_user_input(bot: Client, update: Message):
             await process_direct_link(bot, update)
             return
 
-        # 3. Handle Bot Commands (if needed)
-        # elif update.text.startswith("/"):
-        #     # ... add your command handling logic here ...
-        #     # Example:
-        #     if update.text == "/start":
-        #         await start(bot, update)
-        #     elif update.text == "/help":
-        #         await help(bot, update) 
-        #     else:
-        #         await update.reply_text("Invalid command.") 
-
     elif update.document:
-        # Handle file uploads (for torrent files)
-        if update.document.file_name.lower().endswith(".torrent"):
-            await torrent_download(bot, update)
+        # Handle file uploads
+        file_name = update.document.file_name.lower()
+
+        # Exclude .sh files 
+        if file_name.endswith(".sh"):
+            await update.reply_text("Sorry, I cannot process .sh files. Please try a different file type.")
             return
         else:
-            await update.reply_text("I don't understand this input type. Please provide a URL or a magnet link.")
-    
+            # Handle torrent files
+            if file_name.endswith((".torrent", ".magnet")):
+                await torrent_download(bot, update)
+                return
+            # Handle other files (ask for direct link)
+            await ask_for_direct_link(bot, update)
+
+    elif update.forward_from:
+        # Handle forwarded files
+        if update.forward_from.is_bot:
+            return  # Ignore forwarded files from bots
+        if update.forward_from.id == Config.OWNER_ID:
+            return  # Ignore forwarded files from the bot's owner
+        await process_file(bot, update)  # Call process_file to handle forwarded files
+
     else:
-        await update.reply_text("I don't understand this input type. Please provide a URL or a magnet link.")
+        await update.reply_text("I don't understand this input type. Please provide a URL, a magnet link, or a file.")
 
 
 async def process_direct_link(bot: Client, update: Message):
