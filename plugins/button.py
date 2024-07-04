@@ -11,9 +11,7 @@ import os
 import shutil
 import time
 from datetime import datetime
-import certifi
-import os
-os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
+
 from pyrogram import Client, enums
 from plugins.config import Config
 from plugins.script import Translation
@@ -46,10 +44,12 @@ async def youtube_dl_call_back(bot: Client, update: CallbackQuery):
     custom_file_name = f"{response_json.get('title')}_{youtube_dl_format}.{youtube_dl_ext}"
     youtube_dl_username = None
     youtube_dl_password = None
-    
-    # Define download_directory here, outside the 'if' block
-    download_directory = None
 
+    # Define download_directory here, before the if block
+    tmp_directory_for_each_user = os.path.join(Config.DOWNLOAD_LOCATION, f"{update.from_user.id}{random1}")
+    os.makedirs(tmp_directory_for_each_user, exist_ok=True)
+    download_directory = os.path.join(tmp_directory_for_each_user, custom_file_name)
+    
     if "|" in youtube_dl_url:
         url_parts = youtube_dl_url.split("|")
         if len(url_parts) == 2:
@@ -83,7 +83,6 @@ async def youtube_dl_call_back(bot: Client, update: CallbackQuery):
                 l = entity.length
                 youtube_dl_url = youtube_dl_url[o:o + l]
 
-    # Now you can safely use download_directory here
     await update.message.edit_caption(
         caption=Translation.DOWNLOAD_START.format(custom_file_name)
     )
@@ -91,11 +90,7 @@ async def youtube_dl_call_back(bot: Client, update: CallbackQuery):
     description = Translation.CUSTOM_CAPTION_UL_FILE
     if "fulltitle" in response_json:
         description = response_json["fulltitle"][0:1021]
-    
-    tmp_directory_for_each_user = os.path.join(Config.DOWNLOAD_LOCATION, f"{update.from_user.id}{random1}")
-    os.makedirs(tmp_directory_for_each_user, exist_ok=True)
-    download_directory = os.path.join(tmp_directory_for_each_user, custom_file_name)
-    
+        
     command_to_exec = [
         "yt-dlp",
         "-c",
@@ -271,7 +266,8 @@ async def youtube_dl_call_back(bot: Client, update: CallbackQuery):
             time_taken_for_upload = (end_two - end_one).seconds
             try:
                 shutil.rmtree(tmp_directory_for_each_user)
-                os.remove(thumbnail)
+                if thumbnail: # Delete thumbnail if it exists
+                    os.remove(thumbnail)
             except Exception as e:
                 logger.error(f"Error cleaning up: {e}")
             
