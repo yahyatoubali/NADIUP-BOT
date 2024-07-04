@@ -23,6 +23,7 @@ os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
 # Import necessary functions from other modules
 from plugins.config import Config
 from plugins.script import Translation
+from pyrogram.types import Message
 from plugins.torrent import torrent_download # For torrent handling
 from plugins.functions.forcesub import handle_force_subscribe
 from plugins.functions.display_progress import humanbytes
