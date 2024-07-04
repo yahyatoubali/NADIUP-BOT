@@ -12,10 +12,13 @@ from pyrogram.types import Message
 
 from plugins.config import Config
 from plugins.script import Translation
-from plugins.functions.display_progress import progress_for_pyrogram, humanbytes
+from plugins.functions.display_progress import progress_for_pyrogram, humanbytes, TimeFormatter
 
 # Create a logger instance
 logger = logging.getLogger(__name__)
+
+# Dictionary to store user's active torrents
+user_torrents = {}
 
 @Client.on_message(filters.command("torrent") & filters.private)
 async def torrent_download(bot: Client, message: Message):
@@ -35,7 +38,7 @@ async def torrent_download(bot: Client, message: Message):
                     return
 
                 # Initialize libtorrent session and add torrent
-                ses = lt.session({'listen_interfaces': '0.0.0.0:6881'})  # Updated for libtorrent 2.0.9
+                ses = lt.session({'listen_interfaces': '0.0.0.0:6881'})
                 if torrent_file_path.startswith("magnet:"):
                     params = {
                         'save_path': Config.DOWNLOAD_LOCATION,
@@ -53,25 +56,25 @@ async def torrent_download(bot: Client, message: Message):
 
                 logger.info(f"Torrent added: {handle.name()}")
 
+                user_torrents[message.from_user.id] = handle  # Store handle
+
                 # Start download and update progress
                 await message.reply_text(f"Downloading torrent: `{handle.name()}`")
                 start_time = time.time()
                 previous_update_time = time.time()
-                while (not handle.is_seed()):
+                while not handle.is_seed():
                     s = handle.status()
 
-                    # Limit progress updates to every 5 seconds
                     if time.time() - previous_update_time >= 5:
                         try:
                             current_progress = s.progress * 100
                             downloaded_bytes = s.total_done
                             total_size = s.total_wanted
                             download_speed = s.download_rate
-                            
-                            # Display progress with progress_for_pyrogram
+
                             await progress_for_pyrogram(
                                 current_progress,
-                                100,  # We are showing percentage here
+                                100,  # Percentage
                                 f"Downloading: `{handle.name()}`",
                                 message,
                                 start_time
@@ -88,7 +91,9 @@ async def torrent_download(bot: Client, message: Message):
                 total_time_taken = end_time - start_time
 
                 # Send files after download completion
-                await message.reply_text(f"Torrent downloaded successfully! Time taken: {TimeFormatter(total_time_taken * 1000)}")
+                await message.reply_text(
+                    f"Torrent downloaded successfully! Time taken: {TimeFormatter(total_time_taken * 1000)}"
+                )
                 for f in handle.files():
                     file_path = os.path.join(Config.DOWNLOAD_LOCATION, f.path())
                     await bot.send_document(
@@ -102,6 +107,11 @@ async def torrent_download(bot: Client, message: Message):
                 try:
                     os.remove(torrent_file_path)
                     shutil.rmtree(os.path.join(Config.DOWNLOAD_LOCATION, handle.name()))
+
+                    # Delete thumbnail only if it exists
+                    if thumbnail:
+                        os.remove(thumbnail)
+
                 except Exception as e:
                     logger.warning(f"Error during cleanup: {e}")
 
@@ -110,3 +120,24 @@ async def torrent_download(bot: Client, message: Message):
                 logger.error(f"Error in torrent_download: {e}")
     else:
         await message.reply_text("Please reply to a torrent file or magnet link.")
+
+
+@Client.on_message(filters.command("pausetorrent") & filters.private)
+async def pause_torrent(bot: Client, message: Message):
+    user_id = message.from_user.id
+    if user_id in user_torrents:
+        handle = user_torrents[user_id]
+        handle.pause()
+        await message.reply_text(f"Torrent paused: `{handle.name()}`")
+    else:
+        await message.reply_text("You don't have any active torrents.")
+
+@Client.on_message(filters.command("resumetorrent") & filters.private)
+async def resume_torrent(bot: Client, message: Message):
+    user_id = message.from_user.id
+    if user_id in user_torrents:
+        handle = user_torrents[user_id]
+        handle.resume()
+        await message.reply_text(f"Torrent resumed: `{handle.name()}`")
+    else:
+        await message.reply_text("You don't have any active torrents.")
