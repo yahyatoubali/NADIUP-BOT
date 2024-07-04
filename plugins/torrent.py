@@ -24,8 +24,18 @@ user_torrents = {}
 @Client.on_message((filters.command("torrent") | filters.regex(pattern="^magnet:.*")) & filters.private) 
 async def torrent_download(bot: Client, message: Message):
     try:
-        # ... (Code for getting torrent file or magnet link)
-
+        # Get torrent content 
+        if message.document:
+            torrent_file_path = await bot.download_media(
+                message=message.document,
+                file_name=Config.DOWNLOAD_LOCATION + "/"
+            )
+        elif message.text and message.text.startswith("magnet:"):
+            torrent_file_path = message.text
+        else:
+            await message.reply_text("Please provide a torrent file or magnet link.")
+            return
+        
         # Initialize libtorrent session and add torrent
         ses = lt.session({'listen_interfaces': '0.0.0.0:6881'})
         if torrent_file_path.startswith("magnet:"):
