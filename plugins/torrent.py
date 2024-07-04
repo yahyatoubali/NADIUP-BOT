@@ -35,7 +35,7 @@ async def torrent_download(bot: Client, message: Message):
         else:
             await message.reply_text("Please provide a torrent file or magnet link.")
             return
-        
+
         # Initialize libtorrent session and add torrent
         ses = lt.session({'listen_interfaces': '0.0.0.0:6881'})
         if torrent_file_path.startswith("magnet:"):
