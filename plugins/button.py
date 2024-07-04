@@ -30,6 +30,8 @@ async def youtube_dl_call_back(bot: Client, update: CallbackQuery):
     cb_data = update.data
     tg_send_type, youtube_dl_format, youtube_dl_ext, ranom = cb_data.split("|")
     random1 = random_char(5)
+    width, height, duration = await Mdata01(download_directory)
+    thumb_image_path = await Gthumb02(bot, update, duration, download_directory) 
     
     save_ytdl_json_path = os.path.join(Config.DOWNLOAD_LOCATION, f"{update.from_user.id}{ranom}.json")
     
