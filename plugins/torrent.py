@@ -93,8 +93,10 @@ async def torrent_download(bot: Client, message: Message):
         await message.reply_text(
             f"Torrent downloaded successfully! Time taken: {TimeFormatter(total_time_taken * 1000)}"
         )
-        for f in handle.files():
-            file_path = os.path.join(Config.DOWNLOAD_LOCATION, f.path())
+        # Get files from the 'info' object
+        info = handle.get_torrent_info()
+        for i in range(info.num_files()):
+            file_path = os.path.join(Config.DOWNLOAD_LOCATION, info.files().at(i).path)
 
             # Check file type and upload accordingly
             if file_path.lower().endswith((".mp4", ".mkv", ".avi", ".mov", ".webm")):  # Add more video extensions
@@ -104,7 +106,7 @@ async def torrent_download(bot: Client, message: Message):
                 thumb_image_path = await Gthumb02(bot, message, duration, file_path)
                 await message.reply_video(
                     video=file_path,
-                    caption=f"File: `{f.path()}`",
+                    caption=f"File: `{info.files().at(i).path}`",
                     duration=duration,
                     width=width,
                     height=height,
@@ -128,7 +130,7 @@ async def torrent_download(bot: Client, message: Message):
                 start_time = time.time()
                 await message.reply_document(
                     document=file_path,
-                    caption=f"File: `{f.path()}`",
+                    caption=f"File: `{info.files().at(i).path}`",
                     parse_mode=enums.ParseMode.HTML,
                     progress=progress_for_pyrogram,
                     progress_args=(
