@@ -5,6 +5,7 @@ import libtorrent as lt
 import time
 import os
 import shutil
+import logging 
 
 from pyrogram import Client, filters, enums
 from pyrogram.types import Message
@@ -12,6 +13,9 @@ from pyrogram.types import Message
 from plugins.config import Config
 from plugins.script import Translation
 from plugins.functions.display_progress import progress_for_pyrogram, humanbytes
+
+# Create a logger instance
+logger = logging.getLogger(__name__)
 
 @Client.on_message(filters.command("torrent") & filters.private)
 async def torrent_download(bot: Client, message: Message):
@@ -36,7 +40,6 @@ async def torrent_download(bot: Client, message: Message):
                 params = {
                     'save_path': Config.DOWNLOAD_LOCATION,
                     'storage_mode': lt.storage_mode_t(2),
-                    'paused': False,
                     'auto_managed': True,
                     'duplicate_is_error': True
                 }
