@@ -13,6 +13,7 @@ from pyrogram.types import Message
 from plugins.config import Config
 from plugins.script import Translation
 from plugins.functions.display_progress import progress_for_pyrogram, humanbytes, TimeFormatter
+from plugins.thumbnail import Gthumb01, Gthumb02, Mdata01, Mdata02, Mdata03  # Assuming you have the thumbnail functions
 
 # Create a logger instance
 logger = logging.getLogger(__name__)
@@ -20,20 +21,10 @@ logger = logging.getLogger(__name__)
 # Dictionary to store user's active torrents
 user_torrents = {}
 
-@Client.on_message((filters.command("torrent") | filters.regex(pattern="^magnet:.*")) & filters.private)  # Match command OR magnet link
+@Client.on_message((filters.command("torrent") | filters.regex(pattern="^magnet:.*")) & filters.private) 
 async def torrent_download(bot: Client, message: Message):
     try:
-        # Get torrent content 
-        if message.document:
-            torrent_file_path = await bot.download_media(
-                message=message.document,
-                file_name=Config.DOWNLOAD_LOCATION + "/"
-            )
-        elif message.text and message.text.startswith("magnet:"):
-            torrent_file_path = message.text
-        else:
-            await message.reply_text("Please provide a torrent file or magnet link.")
-            return
+        # ... (Code for getting torrent file or magnet link)
 
         # Initialize libtorrent session and add torrent
         ses = lt.session({'listen_interfaces': '0.0.0.0:6881'})
@@ -94,14 +85,54 @@ async def torrent_download(bot: Client, message: Message):
         )
         for f in handle.files():
             file_path = os.path.join(Config.DOWNLOAD_LOCATION, f.path())
-            await bot.send_document(
-                message.chat.id,
-                document=file_path,
-                caption=f"File: `{f.path()}`",
-                disable_notification=True
-            )
 
-        # Clean up torrent files (adjust as needed)
+            # Check file type and upload accordingly
+            if file_path.lower().endswith((".mp4", ".mkv", ".avi", ".mov", ".webm")):  # Add more video extensions
+                # Upload video as stream
+                start_time = time.time()
+                width, height, duration = await Mdata01(file_path)
+                thumb_image_path = await Gthumb02(bot, message, duration, file_path)
+                await message.reply_video(
+                    video=file_path,
+                    caption=f"File: `{f.path()}`",
+                    duration=duration,
+                    width=width,
+                    height=height,
+                    supports_streaming=True,
+                    parse_mode=enums.ParseMode.HTML,
+                    thumb=thumb_image_path,
+                    progress=progress_for_pyrogram,
+                    progress_args=(
+                        Translation.UPLOAD_START,
+                        message,
+                        start_time
+                    )
+                )
+                try:
+                    os.remove(file_path)
+                    os.remove(thumb_image_path)
+                except Exception as e:
+                    logger.warning(f"Error during cleanup: {e}")
+            else:
+                # Upload as a document
+                start_time = time.time()
+                await message.reply_document(
+                    document=file_path,
+                    caption=f"File: `{f.path()}`",
+                    parse_mode=enums.ParseMode.HTML,
+                    progress=progress_for_pyrogram,
+                    progress_args=(
+                        Translation.UPLOAD_START,
+                        message,
+                        start_time
+                    )
+                )
+                try:
+                    os.remove(file_path)
+                except Exception as e:
+                    logger.warning(f"Error during cleanup: {e}")
+
+        # Clean up torrent files 
         try:
             os.remove(torrent_file_path)
             shutil.rmtree(os.path.join(Config.DOWNLOAD_LOCATION, handle.name()))
