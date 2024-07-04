@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 # Dictionary to store user's active torrents
 user_torrents = {}
 
-@Client.on_message(filters.command("torrent") & filters.private)
+@Client.on_message((filters.command("torrent") | filters.regex(pattern="^magnet:.*")) & filters.private)  # Match command OR magnet link
 async def torrent_download(bot: Client, message: Message):
     if message.reply_to_message:
         if message.reply_to_message.document or message.reply_to_message.text:
