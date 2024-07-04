@@ -108,10 +108,6 @@ async def torrent_download(bot: Client, message: Message):
                     os.remove(torrent_file_path)
                     shutil.rmtree(os.path.join(Config.DOWNLOAD_LOCATION, handle.name()))
 
-                    # Delete thumbnail only if it exists
-                    if thumbnail:
-                        os.remove(thumbnail)
-
                 except Exception as e:
                     logger.warning(f"Error during cleanup: {e}")
 
