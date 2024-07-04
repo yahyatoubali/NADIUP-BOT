@@ -5,7 +5,7 @@ import libtorrent as lt
 import time
 import os
 import shutil
-import logging 
+import logging
 
 from pyrogram import Client, filters, enums
 from pyrogram.types import Message
@@ -34,21 +34,23 @@ async def torrent_download(bot: Client, message: Message):
                     await message.reply_text("Please reply to a torrent file or magnet link.")
                     return
 
-                # Initialize libtorrent session
-                ses = lt.session()
-                ses.listen_on(6881, 6891)
-                params = {
-                    'save_path': Config.DOWNLOAD_LOCATION,
-                    'storage_mode': lt.storage_mode_t(2),
-                    'auto_managed': True,
-                    'duplicate_is_error': True
-                }
+                # Initialize libtorrent session and add torrent
+                ses = lt.session({'listen_interfaces': '0.0.0.0:6881'})  # Updated for libtorrent 2.0.9
                 if torrent_file_path.startswith("magnet:"):
-                    params['url'] = torrent_file_path
+                    params = {
+                        'save_path': Config.DOWNLOAD_LOCATION,
+                        'storage_mode': lt.storage_mode_t.storage_mode_sparse,
+                    }
+                    handle = lt.add_magnet_uri(ses, torrent_file_path, params)
                 else:
-                    params['ti'] = lt.torrent_info(torrent_file_path)
+                    info = lt.torrent_info(torrent_file_path)
+                    params = {
+                        'save_path': Config.DOWNLOAD_LOCATION,
+                        'storage_mode': lt.storage_mode_t.storage_mode_sparse,
+                        'ti': info,
+                    }
+                    handle = ses.add_torrent(params)
 
-                handle = ses.add_torrent(params)
                 logger.info(f"Torrent added: {handle.name()}")
 
                 # Start download and update progress
@@ -87,18 +89,21 @@ async def torrent_download(bot: Client, message: Message):
 
                 # Send files after download completion
                 await message.reply_text(f"Torrent downloaded successfully! Time taken: {TimeFormatter(total_time_taken * 1000)}")
-                for file in handle.get_torrent_info().files():
-                    file_path = os.path.join(Config.DOWNLOAD_LOCATION, file.path)
+                for f in handle.files():
+                    file_path = os.path.join(Config.DOWNLOAD_LOCATION, f.path())
                     await bot.send_document(
-                        message.chat.id, 
+                        message.chat.id,
                         document=file_path,
-                        caption=f"File: `{file.path}`",
+                        caption=f"File: `{f.path()}`",
                         disable_notification=True
                     )
 
-                # Clean up torrent files (optional, adjust as needed)
-                os.remove(torrent_file_path)
-                shutil.rmtree(os.path.join(Config.DOWNLOAD_LOCATION, handle.name()))
+                # Clean up torrent files (adjust as needed)
+                try:
+                    os.remove(torrent_file_path)
+                    shutil.rmtree(os.path.join(Config.DOWNLOAD_LOCATION, handle.name()))
+                except Exception as e:
+                    logger.warning(f"Error during cleanup: {e}")
 
             except Exception as e:
                 await message.reply_text(f"Error downloading torrent: {e}")
