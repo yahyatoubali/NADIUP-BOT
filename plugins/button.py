@@ -1,5 +1,4 @@
 #  @yahyatoubali
-
 import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -10,6 +9,7 @@ import json
 import math
 import os
 import shutil
+import patool
 import time
 from datetime import datetime
 
@@ -30,8 +30,6 @@ async def youtube_dl_call_back(bot: Client, update: CallbackQuery):
     cb_data = update.data
     tg_send_type, youtube_dl_format, youtube_dl_ext, ranom = cb_data.split("|")
     random1 = random_char(5)
-    width, height, duration = await Mdata01(download_directory)
-    thumb_image_path = await Gthumb02(bot, update, duration, download_directory) 
     
     save_ytdl_json_path = os.path.join(Config.DOWNLOAD_LOCATION, f"{update.from_user.id}{ranom}.json")
     
@@ -48,6 +46,9 @@ async def youtube_dl_call_back(bot: Client, update: CallbackQuery):
     youtube_dl_username = None
     youtube_dl_password = None
     
+    # Define download_directory here, outside the 'if' block
+    download_directory = None
+
     if "|" in youtube_dl_url:
         url_parts = youtube_dl_url.split("|")
         if len(url_parts) == 2:
@@ -81,6 +82,7 @@ async def youtube_dl_call_back(bot: Client, update: CallbackQuery):
                 l = entity.length
                 youtube_dl_url = youtube_dl_url[o:o + l]
 
+    # Now you can safely use download_directory here
     await update.message.edit_caption(
         caption=Translation.DOWNLOAD_START.format(custom_file_name)
     )
