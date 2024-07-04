@@ -11,7 +11,9 @@ import os
 import shutil
 import time
 from datetime import datetime
-
+import certifi
+import os
+os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
 from pyrogram import Client, enums
 from plugins.config import Config
 from plugins.script import Translation
