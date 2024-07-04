@@ -20,10 +20,9 @@ import os
 
 os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
 
-# Import necessary functions from other modules
 from plugins.config import Config
 from plugins.script import Translation
-from plugins.torrent import torrent_download # For torrent handling
+from plugins.torrent import torrent_download 
 from plugins.functions.forcesub import handle_force_subscribe
 from plugins.functions.display_progress import humanbytes
 from plugins.functions.help_uploadbot import DownLoadFile
@@ -34,12 +33,11 @@ from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram.errors import UserNotParticipant
 from plugins.functions.ran_text import random_char
 from plugins.database.add import add_user_to_database
-from pyrogram.types import Message 
-from pyrogram.types import Thumbnail
+from pyrogram.types import Thumbnail, Message
 
-from pyrogram import Client, filters, enums, types  # Import filters, enums, and types 
+from pyrogram import Client, filters, enums, types
 
-@Client.on_message(filters.private) # Use filters.private for private chats
+@Client.on_message(filters.private)
 async def handle_user_input(bot: Client, update: Message):
     """Handles different types of user input."""
 
@@ -47,11 +45,6 @@ async def handle_user_input(bot: Client, update: Message):
         return await update.reply_text("Sorry, I couldn't process your request. Please try again.")
 
     await add_user_to_database(bot, update)
-
-    # if Config.UPDATES_CHANNEL:  # Force subscribe will be handled in Phase 2
-    #   fsub = await handle_force_subscribe(bot, update)
-    #   if fsub == 400:
-    #       return
 
     # Handle different input types
     if update.text:
@@ -64,17 +57,6 @@ async def handle_user_input(bot: Client, update: Message):
         elif update.text.startswith(("http://", "https://")):
             await process_direct_link(bot, update)
             return
-
-        # 3. Handle Bot Commands (if needed)
-        # elif update.text.startswith("/"):
-        #     # ... add your command handling logic here ...
-        #     # Example:
-        #     if update.text == "/start":
-        #         await start(bot, update)
-        #     elif update.text == "/help":
-        #         await help(bot, update) 
-        #     else:
-        #         await update.reply_text("Invalid command.") 
 
     else:
         await update.reply_text("I don't understand this input type. Please provide a URL or a magnet link.")
@@ -98,24 +80,17 @@ async def process_direct_link(bot: Client, update: Message):
             file_name = url_parts[1].strip()
             youtube_dl_username = url_parts[2].strip()
             youtube_dl_password = url_parts[3].strip()
-        else:
-            for entity in update.entities:
-                if entity.type == "text_link":
-                    url = entity.url
-                elif entity.type == "url":
-                    o = entity.offset
-                    l = entity.length
-                    url = url[o:o + l]
-    else:
-        for entity in update.entities:
-            if entity.type == "text_link":
-                url = entity.url
-            elif entity.type == "url":
-                o = entity.offset
-                l = entity.length
-                url = url[o:o + l]
+        else: 
+            await update.reply_text("Invalid URL format. Please use: `link | filename.extension` or `link | filename.extension | username | password`")
+            return
 
-    # --- Updated Section for download_directory ----
+    # If no filename, extract it from URL
+    if not file_name: 
+        parsed_url = urllib.parse.urlparse(url)
+        file_name = os.path.basename(parsed_url.path) 
+
+    # ----- Rest of Direct Link Processing Logic ------
+
     if Config.HTTP_PROXY != "":
         command_to_exec = [
             "yt-dlp",
