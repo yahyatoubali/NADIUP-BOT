@@ -9,10 +9,12 @@ from pyrogram import Client, types
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from plugins.database.database import db
 import logging
+# from plugins.unzip import unzip_files # Removing because of this
+# from plugins.extractaudio import extract_audio # Removing because of this
+# from plugins.directlink import generate_direct_link  # Removing directlink feature
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-
 
 
 @Client.on_callback_query()
@@ -78,4 +80,3 @@ async def button(bot, update):
 
     else:
         await update.message.delete()
-
