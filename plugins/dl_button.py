@@ -25,7 +25,7 @@ from plugins.functions.display_progress import progress_for_pyrogram, humanbytes
 from hachoir.metadata import extractMetadata
 from hachoir.parser import createParser
 from PIL import Image
-from pyrogram import Client, enums, types 
+from pyrogram import Client, enums, types
 
 async def ddl_call_back(bot: Client, update: types.CallbackQuery):
     logger.info(update)
@@ -97,7 +97,6 @@ async def ddl_call_back(bot: Client, update: types.CallbackQuery):
                 message_id=update.message.id
             )
             return False
-
     if os.path.exists(download_directory):
         end_one = datetime.now()
         await update.message.edit_caption(
@@ -111,16 +110,9 @@ async def ddl_call_back(bot: Client, update: types.CallbackQuery):
             download_directory = os.path.splitext(download_directory)[0] + "." + "mkv"
             # https://stackoverflow.com/a/678242/4723940
             file_size = os.stat(download_directory).st_size
-        
-        if file_size > Config.TG_MAX_FILE_SIZE:
-            await update.message.edit_caption(
-                caption=Translation.RCHD_TG_API_LIMIT.format(time_taken_for_download, humanbytes(file_size)),
-                parse_mode=enums.ParseMode.HTML
-            )
-            return False
-        
+
         # Upload as stream if file is large (updated to 1.5GB)
-        elif file_size > 1610612736: 
+        if file_size > 1610612736:
             start_time = time.time()
             with open(download_directory, 'rb') as f:
                 await update.message.reply_document(
@@ -214,7 +206,8 @@ async def ddl_call_back(bot: Client, update: types.CallbackQuery):
             time_taken_for_download = (end_one - start).seconds
             time_taken_for_upload = (end_two - end_one).seconds
             await update.message.edit_caption(
-                caption=Translation.AFTER_SUCCESSFUL_UPLOAD_MSG_WITH_TS.format(time_taken_for_download, time_taken_for_upload),
+                caption=Translation.AFTER_SUCCESSFUL_UPLOAD_MSG_WITH_TS.format(time_taken_for_download,
+                                                                                time_taken_for_upload),
                 parse_mode=enums.ParseMode.HTML
             )
             logger.info(f"Downloaded in: {time_taken_for_download} seconds")
@@ -233,16 +226,6 @@ async def download_coroutine(bot, session, url, file_name, chat_id, message_id, 
         content_type = response.headers["Content-Type"]
         if "text" in content_type and total_length < 500:
             return await response.release()
-        await bot.edit_message_caption(
-            chat_id,
-            message_id,
-            caption="""**Initiating Download**
-
-**🔗 URL:** `{}`
-
-**🗂️ Size:** {}""".format(url, humanbytes(total_length)),
-            parse_mode=enums.ParseMode.MARKDOWN
-        )
         with open(file_name, "wb") as f_handle:
             while True:
                 chunk = await response.content.read(Config.CHUNK_SIZE)
