@@ -40,6 +40,7 @@ from pyrogram.types import Thumbnail, Message
 
 from pyrogram import Client, filters, enums, types  # Import filters, enums, and types
 
+
 @Client.on_message(filters.private)  # Use filters.private for private chats
 async def handle_user_input(bot: Client, update: Message):
     """Handles different types of user input."""
@@ -120,30 +121,27 @@ async def process_direct_link(bot: Client, update: Message):
         file_name = os.path.basename(parsed_url.path)
 
     # ----- Direct Link Processing Logic ------
-    if Config.HTTP_PROXY != "":
-        command_to_exec = [
-            "yt-dlp",
-            "--no-warnings",
-            "--youtube-skip-hls-manifest",
-            "-j",
-            url,
-            "--proxy", Config.HTTP_PROXY
-        ]
-    else:
-        command_to_exec = [
-            "yt-dlp",
-            "--no-warnings",
-            "--youtube-skip-hls-manifest",
-            "-j",
-            url
-        ]
 
+    # Determine the best format (adjust based on your bot's needs)
+    best_format = "bestvideo+bestaudio/best"
+
+    # Prepare yt-dlp command
+    command_to_exec = [
+        "yt-dlp",
+        "--no-warnings",
+        "--youtube-skip-hls-manifest",
+        "-j",
+        url
+    ]
     if youtube_dl_username is not None:
         command_to_exec.append("--username")
         command_to_exec.append(youtube_dl_username)
     if youtube_dl_password is not None:
         command_to_exec.append("--password")
         command_to_exec.append(youtube_dl_password)
+    if Config.HTTP_PROXY != "":
+        command_to_exec.append("--proxy")
+        command_to_exec.append(Config.HTTP_PROXY)
 
     logger.info(command_to_exec)
 
@@ -154,7 +152,6 @@ async def process_direct_link(bot: Client, update: Message):
         reply_to_message_id=update.id,
         parse_mode=enums.ParseMode.HTML
     )
-
     try:
         process = await asyncio.create_subprocess_exec(
             *command_to_exec,
@@ -163,10 +160,12 @@ async def process_direct_link(bot: Client, update: Message):
         )
         # Wait for the subprocess to finish
         stdout, stderr = await process.communicate()
-
         e_response = stderr.decode().strip()
-        logger.info(e_response)
         t_response = stdout.decode().strip()
+
+        # Log Errors
+        logger.info(e_response)
+        logger.info(t_response)
 
         if e_response and "nonnumeric port" not in e_response:
             error_message = e_response.replace(
@@ -186,43 +185,54 @@ async def process_direct_link(bot: Client, update: Message):
             return False
 
         if t_response:
+            # Extract information from yt-dlp response
             x_reponse = t_response
             if "\n" in x_reponse:
                 x_reponse, _ = x_reponse.split("\n")
             response_json = json.loads(x_reponse)
+            randem = random_char(5)
+            save_ytdl_json_path = os.path.join(Config.DOWNLOAD_LOCATION,
+                                                f"{update.from_user.id}{randem}.json")
+            with open(save_ytdl_json_path, "w", encoding="utf8") as outfile:
+                json.dump(response_json, outfile, ensure_ascii=False)
 
-            # **Extract direct download URL:**
-            direct_download_url = response_json.get('url')
+            # --- Download and Upload Logic Using yt-dlp ---
+            custom_file_name = file_name or response_json.get('title')
+            tmp_directory_for_each_user = os.path.join(Config.DOWNLOAD_LOCATION, f"{update.from_user.id}{randem}")
+            os.makedirs(tmp_directory_for_each_user, exist_ok=True)
+            download_directory = os.path.join(tmp_directory_for_each_user, custom_file_name)
 
-            if direct_download_url:
-                randem = random_char(5)
-                # ... (rest of your file saving and upload logic)
-                custom_file_name = file_name or response_json.get('title')
-                tmp_directory_for_each_user = os.path.join(Config.DOWNLOAD_LOCATION, f"{update.from_user.id}{randem}")
-                os.makedirs(tmp_directory_for_each_user, exist_ok=True)
-                download_directory = os.path.join(tmp_directory_for_each_user, custom_file_name)
+            await update.reply_text(f"Downloading: `{custom_file_name}`")
+            try:
+                download_command = [
+                    "yt-dlp",
+                    "-c",
+                    "-f", best_format,
+                    "--hls-prefer-ffmpeg",
+                    "--no-warnings",
+                    "-o", download_directory,
+                    url
+                ]
+                if Config.HTTP_PROXY:
+                    download_command.extend(["--proxy", Config.HTTP_PROXY])
+                process = await asyncio.create_subprocess_exec(
+                    *download_command,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                stdout, stderr = await process.communicate()
+                e_response = stderr.decode().strip()
+                t_response = stdout.decode().strip()
 
-                await update.reply_text(f"Downloading: `{custom_file_name}`")
+                # Handle yt-dlp download errors
+                if e_response:
+                    error_message = e_response.replace(
+                        "please report this issue on https://yt-dl.org/bug . Make sure you are using the latest version; see  https://yt-dl.org/update  on how to update. Be sure to call youtube-dl with the --verbose flag and include its complete output.",
+                        "")
+                    await update.reply_text(f"**Error Downloading:** `{error_message}`")
+                    return False
 
-                # Download the file using aiohttp:
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(direct_download_url) as response:
-                        if response.status == 200:
-                            total_size = int(response.headers.get("content-length", 0)) or None
-                            with open(download_directory, "wb") as file:
-                                async for data in response.content.iter_chunked(1024 * 1024):  # 1MB chunks
-                                    file.write(data)
-
-                                    # Update progress every 5%
-                                    if total_size:
-                                        downloaded_size = os.path.getsize(download_directory)
-                                        percentage = (downloaded_size / total_size) * 100
-                                        if int(percentage) % 5 == 0:
-                                            await update.edit_text(
-                                                f"Downloading: `{custom_file_name}`\n"
-                                                f"Progress: {int(percentage)}%"
-                                            )
-                # ----------------------- Upload Logic -----------------------
+                # Upload to Telegram after successful download
                 await update.reply_text(f"Downloaded to my server!\nNow uploading to Telegram...")
                 start_time = time.time()
 
@@ -241,7 +251,6 @@ async def process_direct_link(bot: Client, update: Message):
                         f"File is too large for Telegram! ({humanbytes(file_size)} > {humanbytes(Config.TG_MAX_FILE_SIZE)})"
                     )
                     return
-
                 # Upload as stream if file is large (updated to 1.5GB)
                 if file_size > 1610612736:
                     with open(download_directory, "rb") as f:
@@ -291,7 +300,6 @@ async def process_direct_link(bot: Client, update: Message):
                                 start_time
                             )
                         )
-
                 # Cleanup after upload
                 try:
                     shutil.rmtree(tmp_directory_for_each_user)
@@ -299,7 +307,6 @@ async def process_direct_link(bot: Client, update: Message):
                         os.remove(thumbnail)
                 except Exception as e:
                     logger.error(f"Error cleaning up: {e}")
-
                 # Success message
                 end_two = datetime.now()
                 time_taken_for_upload = (end_two - end_one).seconds
@@ -309,19 +316,18 @@ async def process_direct_link(bot: Client, update: Message):
                     parse_mode=enums.ParseMode.HTML,
                     disable_web_page_preview=True
                 )
-
-            else:
-                await update.reply_text("Direct download URL not found in the response.")
+            except Exception as e:
+                await update.reply_text(f"Error downloading: {e}")
+                logger.error(f"Error in process_direct_link: {e}")
                 return
 
-        # ... (Rest of your error handling code)
+        else:
+            # Handle cases where yt-dlp doesn't return valid JSON
+            await chk.delete()
+            await update.reply_text("yt-dlp returned an invalid response. This could be due to changes in the target website. Please try again later or contact the bot developer.")
+            return
 
-    except Exception as e:  # Correct indentation
-        logger.error(f"An error occurred: {e}")
+    except Exception as e:
         await chk.delete()
-        await bot.send_message(
-            chat_id=update.chat.id,
-            text=f"**Error:** {e}",
-            reply_to_message_id=update.id,
-            parse_mode=enums.ParseMode.MARKDOWN
-        )
+        await update.reply_text(f"Error processing direct link: {e}")
+        logger.error(f"Error in process_direct_link: {e}")
