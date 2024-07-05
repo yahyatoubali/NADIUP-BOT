@@ -16,14 +16,14 @@ import asyncio
 import json
 import math
 import certifi
+import aiohttp  # Import aiohttp for asynchronous downloads
 import os
 
 os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
 
-# Import necessary functions from other modules
 from plugins.config import Config
 from plugins.script import Translation
-from plugins.torrent import torrent_download # For torrent handling
+from plugins.torrent import torrent_download  # For torrent handling
 from plugins.functions.forcesub import handle_force_subscribe
 from plugins.functions.display_progress import humanbytes
 from plugins.functions.help_uploadbot import DownLoadFile
@@ -34,12 +34,13 @@ from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram.errors import UserNotParticipant
 from plugins.functions.ran_text import random_char
 from plugins.database.add import add_user_to_database
+from plugins.thumbnail import *
 # from plugins.directlink import process_file #  Removing directlink feature
 from pyrogram.types import Thumbnail, Message
 
-from pyrogram import Client, filters, enums, types  # Import filters, enums, and types 
+from pyrogram import Client, filters, enums, types  # Import filters, enums, and types
 
-@Client.on_message(filters.private) # Use filters.private for private chats
+@Client.on_message(filters.private)  # Use filters.private for private chats
 async def handle_user_input(bot: Client, update: Message):
     """Handles different types of user input."""
 
@@ -69,7 +70,7 @@ async def handle_user_input(bot: Client, update: Message):
         # Handle file uploads
         file_name = update.document.file_name.lower()
 
-        # Exclude .sh files 
+        # Exclude .sh files
         if file_name.endswith(".sh"):
             await update.reply_text("Sorry, I cannot process .sh files. Please try a different file type.")
             return
@@ -85,7 +86,7 @@ async def handle_user_input(bot: Client, update: Message):
     #         return  # Ignore forwarded files from bots
     #     if update.forward_from.id == Config.OWNER_ID:
     #         return  # Ignore forwarded files from the bot's owner
-    #     # await process_file(bot, update)  
+    #     # await process_file(bot, update)
 
     else:
         await update.reply_text("I don't understand this input type. Please provide a URL or a magnet link.")
@@ -109,17 +110,16 @@ async def process_direct_link(bot: Client, update: Message):
             file_name = url_parts[1].strip()
             youtube_dl_username = url_parts[2].strip()
             youtube_dl_password = url_parts[3].strip()
-        else: 
+        else:
             await update.reply_text("Invalid URL format. Please use: `link | filename.extension` or `link | filename.extension | username | password`")
             return
 
     # If no filename, extract it from URL
-    if not file_name: 
+    if not file_name:
         parsed_url = urllib.parse.urlparse(url)
-        file_name = os.path.basename(parsed_url.path) 
+        file_name = os.path.basename(parsed_url.path)
 
-    # ----- Rest of Direct Link Processing Logic ------
-
+    # ----- Direct Link Processing Logic ------
     if Config.HTTP_PROXY != "":
         command_to_exec = [
             "yt-dlp",
@@ -169,7 +169,9 @@ async def process_direct_link(bot: Client, update: Message):
         t_response = stdout.decode().strip()
 
         if e_response and "nonnumeric port" not in e_response:
-            error_message = e_response.replace("please report this issue on https://yt-dl.org/bug . Make sure you are using the latest version; see  https://yt-dl.org/update  on how to update. Be sure to call youtube-dl with the --verbose flag and include its complete output.", "")
+            error_message = e_response.replace(
+                "please report this issue on https://yt-dl.org/bug . Make sure you are using the latest version; see  https://yt-dl.org/update  on how to update. Be sure to call youtube-dl with the --verbose flag and include its complete output.",
+                "")
             if "This video is only available for registered users." in error_message:
                 error_message += Translation.SET_CUSTOM_USERNAME_PASSWORD
             await chk.delete()
@@ -188,114 +190,133 @@ async def process_direct_link(bot: Client, update: Message):
             if "\n" in x_reponse:
                 x_reponse, _ = x_reponse.split("\n")
             response_json = json.loads(x_reponse)
-            randem = random_char(5)
-            save_ytdl_json_path = Config.DOWNLOAD_LOCATION + \
-                "/" + str(update.from_user.id) + f'{randem}' + ".json"
-            with open(save_ytdl_json_path, "w", encoding="utf8") as outfile:
-                json.dump(response_json, outfile, ensure_ascii=False)
-            inline_keyboard = []
-            duration = None
-            if "duration" in response_json:
-                duration = response_json["duration"]
-            if "formats" in response_json:
-                for formats in response_json["formats"]:
-                    format_id = formats.get("format_id")
-                    format_string = formats.get("format_note")
-                    if format_string is None:
-                        format_string = formats.get("format")
-                    format_ext = formats.get("ext")
-                    approx_file_size = ""
-                    if "filesize" in formats:
-                        approx_file_size = humanbytes(formats["filesize"])
-                    cb_string_video = "{}|{}|{}|{}".format(
-                        "video", format_id, format_ext, randem)
-                    cb_string_file = "{}|{}|{}|{}".format(
-                        "file", format_id, format_ext, randem)
-                    if format_string is not None and not "audio only" in format_string:
-                        ikeyboard = [
-                            InlineKeyboardButton(
-                                f"🎬 {format_string} {format_ext} {approx_file_size} ",
-                                callback_data=(cb_string_video).encode("UTF-8")
-                            )
-                        ]
-                    else:
-                        # Special weird case :
-                        ikeyboard = [
-                            InlineKeyboardButton(
-                                f"🎬 [{format_ext}] ({approx_file_size})",
-                                callback_data=(cb_string_video).encode("UTF-8")
-                            )
-                        ]
-                    inline_keyboard.append(ikeyboard)
-                if duration is not None:
-                    cb_string_64 = "{}|{}|{}|{}".format("audio", "64k", "mp3", randem)
-                    cb_string_128 = "{}|{}|{}|{}".format("audio", "128k", "mp3", randem)
-                    cb_string = "{}|{}|{}|{}".format("audio", "320k", "mp3", randem)
-                    inline_keyboard.append([
-                        InlineKeyboardButton(
-                            f"🎵 MP3 (64 kbps)", callback_data=cb_string_64.encode("UTF-8")),
-                        InlineKeyboardButton(
-                            f"🎵 MP3 (128 kbps)", callback_data=cb_string_128.encode("UTF-8"))
-                    ])
-                    inline_keyboard.append([
-                        InlineKeyboardButton(
-                            f"🎵 MP3 (320 kbps)", callback_data=cb_string.encode("UTF-8"))
-                    ])
-                inline_keyboard.append([                 
-                    InlineKeyboardButton(
-                        "⛔️ Close", callback_data='close')               
-                ]) 
-            else:
-                format_id = response_json["format_id"]
-                format_ext = response_json["ext"]
-                cb_string_file = "{}|{}|{}|{}".format(
-                    "file", format_id, format_ext, randem)
-                cb_string_video = "{}|{}|{}|{}".format(
-                    "video", format_id, format_ext, randem)
-                inline_keyboard.append([
-                    InlineKeyboardButton(
-                        "🎬 Media",
-                        callback_data=(cb_string_video).encode("UTF-8")
-                    )
-                ])
-                inline_keyboard.append([
-                    InlineKeyboardButton(
-                        "🎥 Video",
-                        callback_data=(cb_string_video).encode("UTF-8")
-                    )
-                ])
-            reply_markup = InlineKeyboardMarkup(inline_keyboard)
-            await chk.delete()
-            await bot.send_message(
-                chat_id=update.chat.id,
-                text=Translation.FORMAT_SELECTION.format(Thumbnail) + "\n" + Translation.SET_CUSTOM_USERNAME_PASSWORD,
-                reply_markup=reply_markup,
-                parse_mode=enums.ParseMode.HTML,
-                reply_to_message_id=update.id
-            )
-        else:
-            inline_keyboard = []
-            cb_string_file = "{}={}={}".format(
-                "file", "LFO", "NONE")
-            cb_string_video = "{}={}={}".format(
-                "video", "OFL", "ENON")
-            inline_keyboard.append([
-                InlineKeyboardButton(
-                    "🎬 Media",
-                    callback_data=(cb_string_video).encode("UTF-8")
-                )
-            ])
-            reply_markup = InlineKeyboardMarkup(inline_keyboard)
-            await chk.delete()
-            await bot.send_message(
-                chat_id=update.chat.id,
-                text=Translation.FORMAT_SELECTION,
-                reply_markup=reply_markup,
-                parse_mode=enums.ParseMode.HTML,
-                reply_to_message_id=update.id
-            )
 
-    except Exception as e: # Correct indentation
+            # **Extract direct download URL:**
+            direct_download_url = response_json.get('url')
+
+            if direct_download_url:
+                randem = random_char(5)
+                # ... (rest of your file saving and upload logic)
+                custom_file_name = file_name or response_json.get('title')
+                tmp_directory_for_each_user = os.path.join(Config.DOWNLOAD_LOCATION, f"{update.from_user.id}{randem}")
+                os.makedirs(tmp_directory_for_each_user, exist_ok=True)
+                download_directory = os.path.join(tmp_directory_for_each_user, custom_file_name)
+
+                await update.reply_text(f"Downloading: `{custom_file_name}`")
+
+                # Download the file using aiohttp:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(direct_download_url) as response:
+                        if response.status == 200:
+                            total_size = int(response.headers.get("content-length", 0)) or None
+                            with open(download_directory, "wb") as file:
+                                async for data in response.content.iter_chunked(1024 * 1024):  # 1MB chunks
+                                    file.write(data)
+
+                                    # Update progress every 5%
+                                    if total_size:
+                                        downloaded_size = os.path.getsize(download_directory)
+                                        percentage = (downloaded_size / total_size) * 100
+                                        if int(percentage) % 5 == 0:
+                                            await update.edit_text(
+                                                f"Downloading: `{custom_file_name}`\n"
+                                                f"Progress: {int(percentage)}%"
+                                            )
+                # ----------------------- Upload Logic -----------------------
+                await update.reply_text(f"Downloaded to my server!\nNow uploading to Telegram...")
+                start_time = time.time()
+
+                if os.path.isfile(download_directory):
+                    file_size = os.stat(download_directory).st_size
+                else:
+                    download_directory = os.path.splitext(download_directory)[0] + ".mkv"
+                    if os.path.isfile(download_directory):
+                        file_size = os.stat(download_directory).st_size
+                    else:
+                        await update.reply_text(f"Downloaded file not found: {download_directory}")
+                        return
+
+                if file_size > Config.TG_MAX_FILE_SIZE:
+                    await update.reply_text(
+                        f"File is too large for Telegram! ({humanbytes(file_size)} > {humanbytes(Config.TG_MAX_FILE_SIZE)})"
+                    )
+                    return
+
+                # Upload as stream if file is large (updated to 1.5GB)
+                if file_size > 1610612736:
+                    with open(download_directory, "rb") as f:
+                        await update.reply_document(
+                            document=f,
+                            caption=Translation.CUSTOM_CAPTION_UL_FILE,
+                            parse_mode=enums.ParseMode.HTML,
+                            progress=progress_for_pyrogram,
+                            progress_args=(
+                                Translation.UPLOAD_START,
+                                update,
+                                start_time
+                            )
+                        )
+                else:
+                    # Normal upload for smaller files
+                    if not await db.get_upload_as_doc(update.from_user.id):
+                        thumbnail = await Gthumb01(bot, update)
+                        await update.reply_document(
+                            document=download_directory,
+                            thumb=thumbnail,
+                            caption=Translation.CUSTOM_CAPTION_UL_FILE,
+                            parse_mode=enums.ParseMode.HTML,
+                            progress=progress_for_pyrogram,
+                            progress_args=(
+                                Translation.UPLOAD_START,
+                                update,
+                                start_time
+                            )
+                        )
+                    else:
+                        width, height, duration = await Mdata01(download_directory)
+                        thumb_image_path = await Gthumb02(bot, update, duration, download_directory)
+                        await update.reply_video(
+                            video=download_directory,
+                            caption=Translation.CUSTOM_CAPTION_UL_FILE,
+                            duration=duration,
+                            width=width,
+                            height=height,
+                            supports_streaming=True,
+                            parse_mode=enums.ParseMode.HTML,
+                            thumb=thumb_image_path,
+                            progress=progress_for_pyrogram,
+                            progress_args=(
+                                Translation.UPLOAD_START,
+                                update,
+                                start_time
+                            )
+                        )
+
+                # Cleanup after upload
+                try:
+                    shutil.rmtree(tmp_directory_for_each_user)
+                    if thumbnail:  # Delete thumbnail if it exists
+                        os.remove(thumbnail)
+                except Exception as e:
+                    logger.error(f"Error cleaning up: {e}")
+
+                # Success message
+                end_two = datetime.now()
+                time_taken_for_upload = (end_two - end_one).seconds
+                await update.reply_text(
+                    text=Translation.AFTER_SUCCESSFUL_UPLOAD_MSG_WITH_TS.format(
+                        time_taken_for_download, time_taken_for_upload),
+                    parse_mode=enums.ParseMode.HTML,
+                    disable_web_page_preview=True
+                )
+
+            else:
+                await update.reply_text("Direct download URL not found in the response.")
+                return
+
+        # ... (Rest of your error handling code)
+
+    except Exception as e:  # Correct indentation
         logger.error(f"An error occurred: {e}")
         await chk.delete()
         await bot.send_message(
