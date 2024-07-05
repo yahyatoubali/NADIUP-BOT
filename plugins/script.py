@@ -12,6 +12,7 @@ I am NadiuP Bot, a Telegram URL Uploader Bot.
 Use the help button to know how to use me.
 """
     CHECK_LINK = "Analyzing your link {} ⌛"  # Added {} placeholder
+    AFTER_SUCCESSFUL_UPLOAD_MSG_WITH_TS = "✅ File uploaded successfully!\nDownloaded in {time_taken_for_download} seconds.\nUploaded in {time_taken_for_upload} seconds.\n\nFile: `{file_name}`\nSize: `{file_size}`"
 
     HELP_TEXT = """
 **Link to Media or File:**
