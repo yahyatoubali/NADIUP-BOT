@@ -187,7 +187,7 @@ async def NU_process_direct_link(bot: Client, update: Message):
                 final_file_path = os.path.join(tmp_directory_for_each_user, f"{custom_file_name}.mkv")
 
                 await update.reply_text(f"Downloading: `{custom_file_name}`")
-
+                start_time = time.time() # Start time for download 
                 try:
                     # --- Download Video Stream ---
                     download_command = [
@@ -273,8 +273,91 @@ async def NU_process_direct_link(bot: Client, update: Message):
                     logger.error(f"Error in process_direct_link: {e}")
                     return
 
-            else: # Not YouTube, provide download options
-                # ... [Your existing code to provide download options]
+            else:  # Not YouTube, provide download options
+                randem = random_char(5)
+                save_ytdl_json_path = os.path.join(Config.DOWNLOAD_LOCATION,
+                                                    f"{update.from_user.id}{randem}.json")
+                with open(save_ytdl_json_path, "w", encoding="utf8") as outfile:
+                    json.dump(response_json, outfile, ensure_ascii=False)
+                inline_keyboard = []
+                duration = None
+                if "duration" in response_json:
+                    duration = response_json["duration"]
+                if "formats" in response_json:
+                    for formats in response_json["formats"]:
+                        format_id = formats.get("format_id")
+                        format_string = formats.get("format_note")
+                        if format_string is None:
+                            format_string = formats.get("format")
+                        format_ext = formats.get("ext")
+                        approx_file_size = ""
+                        if "filesize" in formats:
+                            approx_file_size = humanbytes(formats["filesize"])
+                        cb_string_video = "{}|{}|{}|{}".format(
+                            "video", format_id, format_ext, randem)
+                        cb_string_file = "{}|{}|{}|{}".format(
+                            "file", format_id, format_ext, randem)
+                        if format_string is not None and not "audio only" in format_string:
+                            ikeyboard = [
+                                InlineKeyboardButton(
+                                    "🎬 {format_string} {format_ext} {approx_file_size} ".format(
+                                        format_string=format_string, format_ext=format_ext,
+                                        approx_file_size=approx_file_size),
+                                    callback_data=(cb_string_video).encode("UTF-8")
+                                )
+                            ]
+                        else:
+                            # Special weird case :
+                            ikeyboard = [
+                                InlineKeyboardButton(
+                                    "🎬 [{format_ext}] ({approx_file_size})".format(format_ext=format_ext,
+                                                                                approx_file_size=approx_file_size),
+                                    callback_data=(cb_string_video).encode("UTF-8")
+                                )
+                            ]
+                        inline_keyboard.append(ikeyboard)
+                    if duration is not None:
+                        cb_string_64 = "{}|{}|{}|{}".format("audio", "64k", "mp3", randem)
+                        cb_string_128 = "{}|{}|{}|{}".format("audio", "128k", "mp3", randem)
+                        cb_string = "{}|{}|{}|{}".format("audio", "320k", "mp3", randem)
+                        inline_keyboard.append([
+                            InlineKeyboardButton(
+                                "🎵 MP3 (64 kbps)", callback_data=cb_string_64.encode("UTF-8")),
+                            InlineKeyboardButton(
+                                "🎵 MP3 (128 kbps)", callback_data=cb_string_128.encode("UTF-8"))
+                        ])
+                        inline_keyboard.append([
+                            InlineKeyboardButton(
+                                "🎵 MP3 (320 kbps)", callback_data=cb_string.encode("UTF-8"))
+                        ])
+                else:
+                    format_id = response_json["format_id"]
+                    format_ext = response_json["ext"]
+                    cb_string_file = "{}|{}|{}|{}".format(
+                        "file", format_id, format_ext, randem)
+                    cb_string_video = "{}|{}|{}|{}".format(
+                        "video", format_id, format_ext, randem)
+                    inline_keyboard.append([
+                        InlineKeyboardButton(
+                            "🎬 Media",
+                            callback_data=(cb_string_video).encode("UTF-8")
+                        )
+                    ])
+                    inline_keyboard.append([
+                        InlineKeyboardButton(
+                            "🎥 Video",
+                            callback_data=(cb_string_video).encode("UTF-8")
+                        )
+                    ])
+                reply_markup = InlineKeyboardMarkup(inline_keyboard)
+                await chk.delete()
+                await bot.send_message(
+                    chat_id=update.chat.id,
+                    text=Translation.FORMAT_SELECTION.format(""),
+                    reply_markup=reply_markup,
+                    parse_mode=enums.ParseMode.HTML,
+                    reply_to_message_id=update.id
+                )
 
         else:
             # --- Handle Cases Where yt-dlp Doesn't Return Valid JSON ---
