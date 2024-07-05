@@ -11,6 +11,7 @@ I am NadiuP Bot, a Telegram URL Uploader Bot.
 
 Use the help button to know how to use me.
 """
+    CHECK_LINK = "Analyzing your link {} ⌛"  # Added {} placeholder
 
     HELP_TEXT = """
 **Link to Media or File:**
