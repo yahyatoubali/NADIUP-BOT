@@ -191,26 +191,28 @@ async def process_direct_link(bot: Client, update: Message):
                 x_reponse, _ = x_reponse.split("\n")
             response_json = json.loads(x_reponse)
             randem = random_char(5)
-            save_ytdl_json_path = os.path.join(Config.DOWNLOAD_LOCATION,
-                                                f"{update.from_user.id}{randem}.json")
-            with open(save_ytdl_json_path, "w", encoding="utf8") as outfile:
-                json.dump(response_json, outfile, ensure_ascii=False)
 
             # --- Download and Upload Logic Using yt-dlp ---
             custom_file_name = file_name or response_json.get('title')
             tmp_directory_for_each_user = os.path.join(Config.DOWNLOAD_LOCATION, f"{update.from_user.id}{randem}")
             os.makedirs(tmp_directory_for_each_user, exist_ok=True)
-            download_directory = os.path.join(tmp_directory_for_each_user, custom_file_name)
+
+            # Download video and audio separately 
+            video_file_path = os.path.join(tmp_directory_for_each_user, f"{custom_file_name}_video.mp4")
+            audio_file_path = os.path.join(tmp_directory_for_each_user, f"{custom_file_name}_audio.webm")
+            final_file_path = os.path.join(tmp_directory_for_each_user, f"{custom_file_name}.mkv") # Final merged file
 
             await update.reply_text(f"Downloading: `{custom_file_name}`")
+
             try:
+                # Download video stream
                 download_command = [
                     "yt-dlp",
                     "-c",
-                    "-f", best_format,
+                    "-f", "bestvideo[ext=mp4]", # Download best MP4 video
                     "--hls-prefer-ffmpeg",
                     "--no-warnings",
-                    "-o", download_directory,
+                    "-o", video_file_path,
                     url
                 ]
                 if Config.HTTP_PROXY:
@@ -221,10 +223,30 @@ async def process_direct_link(bot: Client, update: Message):
                     stderr=asyncio.subprocess.PIPE,
                 )
                 stdout, stderr = await process.communicate()
+
+                # Download audio stream
+                download_command = [
+                    "yt-dlp",
+                    "-c",
+                    "-f", "bestaudio[ext=webm]",  # Download best WebM audio
+                    "--hls-prefer-ffmpeg",
+                    "--no-warnings",
+                    "-o", audio_file_path,
+                    url
+                ]
+                if Config.HTTP_PROXY:
+                    download_command.extend(["--proxy", Config.HTTP_PROXY])
+                process = await asyncio.create_subprocess_exec(
+                    *download_command,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                stdout, stderr = await process.communicate()
+
+                # Handle yt-dlp download errors (check for errors in stderr)
                 e_response = stderr.decode().strip()
                 t_response = stdout.decode().strip()
 
-                # Handle yt-dlp download errors
                 if e_response:
                     error_message = e_response.replace(
                         "please report this issue on https://yt-dl.org/bug . Make sure you are using the latest version; see  https://yt-dl.org/update  on how to update. Be sure to call youtube-dl with the --verbose flag and include its complete output.",
@@ -232,28 +254,49 @@ async def process_direct_link(bot: Client, update: Message):
                     await update.reply_text(f"**Error Downloading:** `{error_message}`")
                     return False
 
-                # Upload to Telegram after successful download
+                # --- Merge Video and Audio using FFmpeg ---
+                merge_command = [
+                    "ffmpeg",
+                    "-i", video_file_path,
+                    "-i", audio_file_path,
+                    "-c", "copy", # Copy codecs, avoids re-encoding
+                    final_file_path
+                ]
+                process = await asyncio.create_subprocess_exec(
+                    *merge_command,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                stdout, stderr = await process.communicate()
+
+                # Error handling for FFmpeg merge (check for errors in stderr)
+                e_response = stderr.decode().strip()
+                t_response = stdout.decode().strip()
+
+                if e_response:
+                    error_message = e_response
+                    await update.reply_text(f"**Error Merging Video and Audio:** `{error_message}`")
+                    return False
+                
+                # ---- Upload Merged File to Telegram ----
                 await update.reply_text(f"Downloaded to my server!\nNow uploading to Telegram...")
                 start_time = time.time()
 
-                if os.path.isfile(download_directory):
-                    file_size = os.stat(download_directory).st_size
+                if os.path.isfile(final_file_path):
+                    file_size = os.stat(final_file_path).st_size
                 else:
-                    download_directory = os.path.splitext(download_directory)[0] + ".mkv"
-                    if os.path.isfile(download_directory):
-                        file_size = os.stat(download_directory).st_size
-                    else:
-                        await update.reply_text(f"Downloaded file not found: {download_directory}")
-                        return
+                    await update.reply_text(f"Merged file not found: {final_file_path}")
+                    return
 
                 if file_size > Config.TG_MAX_FILE_SIZE:
                     await update.reply_text(
                         f"File is too large for Telegram! ({humanbytes(file_size)} > {humanbytes(Config.TG_MAX_FILE_SIZE)})"
                     )
                     return
+
                 # Upload as stream if file is large (updated to 1.5GB)
                 if file_size > 1610612736:
-                    with open(download_directory, "rb") as f:
+                    with open(final_file_path, "rb") as f:
                         await update.reply_document(
                             document=f,
                             caption=Translation.CUSTOM_CAPTION_UL_FILE,
@@ -270,7 +313,7 @@ async def process_direct_link(bot: Client, update: Message):
                     if not await db.get_upload_as_doc(update.from_user.id):
                         thumbnail = await Gthumb01(bot, update)
                         await update.reply_document(
-                            document=download_directory,
+                            document=final_file_path,  # Upload the merged file
                             thumb=thumbnail,
                             caption=Translation.CUSTOM_CAPTION_UL_FILE,
                             parse_mode=enums.ParseMode.HTML,
@@ -282,10 +325,10 @@ async def process_direct_link(bot: Client, update: Message):
                             )
                         )
                     else:
-                        width, height, duration = await Mdata01(download_directory)
-                        thumb_image_path = await Gthumb02(bot, update, duration, download_directory)
+                        width, height, duration = await Mdata01(final_file_path)
+                        thumb_image_path = await Gthumb02(bot, update, duration, final_file_path)
                         await update.reply_video(
-                            video=download_directory,
+                            video=final_file_path,  # Upload the merged file
                             caption=Translation.CUSTOM_CAPTION_UL_FILE,
                             duration=duration,
                             width=width,
@@ -300,22 +343,15 @@ async def process_direct_link(bot: Client, update: Message):
                                 start_time
                             )
                         )
-                # Cleanup after upload
+
+                # ---- Cleanup Temporary Files ----
                 try:
-                    shutil.rmtree(tmp_directory_for_each_user)
-                    if thumbnail:  # Delete thumbnail if it exists
-                        os.remove(thumbnail)
+                    os.remove(video_file_path)
+                    os.remove(audio_file_path)
+                    # ... [Remove other temporary files if needed]
                 except Exception as e:
-                    logger.error(f"Error cleaning up: {e}")
-                # Success message
-                end_two = datetime.now()
-                time_taken_for_upload = (end_two - end_one).seconds
-                await update.reply_text(
-                    text=Translation.AFTER_SUCCESSFUL_UPLOAD_MSG_WITH_TS.format(
-                        time_taken_for_download, time_taken_for_upload),
-                    parse_mode=enums.ParseMode.HTML,
-                    disable_web_page_preview=True
-                )
+                    logger.warning(f"Error during cleanup: {e}")
+
             except Exception as e:
                 await update.reply_text(f"Error downloading: {e}")
                 logger.error(f"Error in process_direct_link: {e}")
@@ -324,7 +360,8 @@ async def process_direct_link(bot: Client, update: Message):
         else:
             # Handle cases where yt-dlp doesn't return valid JSON
             await chk.delete()
-            await update.reply_text("yt-dlp returned an invalid response. This could be due to changes in the target website. Please try again later or contact the bot developer.")
+            await update.reply_text(
+                "yt-dlp returned an invalid response. This could be due to changes in the target website. Please try again later or contact the bot developer.")
             return
 
     except Exception as e:
